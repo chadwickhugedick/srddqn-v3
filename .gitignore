@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest cache
+.pytest_cache/
+
+# Data cache (raw parquets and processed datasets)
+data/
+outputs/
+
+# Model checkpoints
+checkpoints/
+
+# Wandb logs
+wandb/
+
+# OS generated files
+.DS_Store
+Thumbs.db
