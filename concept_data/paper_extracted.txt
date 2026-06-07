@@ -1,0 +1,145 @@
+# Self-Rewarding Double Deep Q-Network (SRDDQN) Mechanism
+
+## 1. Overview of the SRDRL / SRDDQN Framework
+The Self-Rewarding Deep Reinforcement Learning (SRDRL) mechanism integrates a self-rewarding network within the reinforcement learning (RL) framework. It operates in two primary phases:
+1. **Supervised Learning Phase**: A time-series feature extraction model (e.g., TimesNet, WFTNet, or NLinear) is trained using supervised learning to predict rewards. It compares predicted rewards ($r^s_t$) against expert-defined reward labels ($r^e_t$) based on historical expert metrics (Min-Max, Sharpe Ratio, or Return) and updates its parameters using Mean Squared Error (MSE) backpropagation.
+2. **Reinforcement Learning Phase**: During RL agent training, the system evaluates all possible actions using both the expert-labeled rewards and the predicted rewards. The higher reward between the two is selected as the step reward and stored in the replay buffer.
+
+$$r_t = \max(r^s_t[a_t], r^e_t[a_t])$$
+
+This hybrid reward approach combines expert knowledge with the network's generalization capability.
+
+---
+
+## 2. MDP Formulation for Stock Trading
+* **State ($s_t$)**: Composed of opening, high, low, close (OHLC) prices and volume from the past 20 days and 20 weeks.
+* **Actions ($a_t$)**: Discrete set of actions $\{ \text{Buy}, \text{Sell}, \text{Hold} \}$.
+* **Position ($POS_t$)**: Current position state ($POS_t \in \{-1, 0, 1\}$ or similar representing short, neutral, long).
+
+---
+
+## 3. Expert Reward Functions (Labels)
+Three expert reward formulas are utilized as labels for supervised learning and reinforcement learning comparison:
+
+### A. Short-Term Sharpe Ratio (SSR) Reward
+Measures the immediate risk-adjusted return over a future window of $k$ days:
+$$r_t^{\text{SSR}} = \text{POS}_t \times R_t^*$$
+Where $R_t^*$ is the ratio of mean to standard deviation of future returns:
+$$R_t^* = \frac{\text{mean}(R_t^k)}{\text{std}(R_t^k)}$$
+The future return vector $R_t^k$ for the next $k$ days is:
+$$R_t^k = \left[ \frac{p_{t+1}-p_t}{p_t}, \frac{p_{t+2}-p_t}{p_t}, \dots, \frac{p_{t+k}-p_t}{p_t} \right]$$
+where $p_t$ is the asset price at time $t$.
+
+### B. Return Reward
+Captures the direct percentage change in asset price:
+$$r_t^{\text{Return}} = \text{POS}_t \times \frac{P_t - P_{t-1}}{P_{t-1}} \times 100$$
+where $P_t$ is the asset's closing price at time $t$.
+
+### C. Min-Max Reward
+Maximizes profit by considering the maximum upside and downside over a window of $m$ future steps:
+$$r_t^{\text{Min-Max}} = \begin{cases} 
+\text{POS}_t \times \max R, & \text{if } \max R > 0 \text{ or } \max R + \min R > 0 \\ 
+\text{POS}_t \times \min R, & \text{if } \min R < 0 \text{ or } \max R + \min R < 0 \\ 
+\text{const} - (\max R - \min R), & \text{otherwise} 
+\end{cases}$$
+
+Where:
+$$\max R = \begin{cases} 
+\max(r_{t+1}, r_{t+2}, \dots, r_{t+m}), & \text{if } r_{t+i} > 0 \\ 
+0, & \text{otherwise} 
+\end{cases}$$
+
+$$\min R = \begin{cases} 
+\min(r_{t+1}, r_{t+2}, \dots, r_{t+m}), & \text{if } r_{t+i} < 0 \\ 
+0, & \text{otherwise} 
+\end{cases}$$
+
+And $r_{t+i}$ is the future daily return:
+$$r_{t+i} = \frac{p_{t+i} - p_t}{p_t} \times 100$$
+
+---
+
+## 4. Self-Rewarding Double Deep Q-Network (SRDDQN)
+The core architecture consists of three neural networks:
+1. **Q-Network ($\theta$)**: Learns the state-action value function $Q(s_t, a_t; \theta)$ for action selection.
+2. **Target Network ($\theta^-$)**: Used to compute the target Q-value (updated periodically to match $\theta$).
+3. **Reward Network ($\phi$)**: Learns to approximate the expert rewards.
+
+### Q-Value Update
+$$Q(s_t, a_t; \theta) \leftarrow Q(s_t, a_t; \theta) + \alpha \left[ r_t + \gamma Q(s_{t+1}, a_{\max}(s_{t+1}; \theta^-)) - Q(s_t, a_t; \theta) \right]$$
+where:
+* $\alpha$ is the learning rate.
+* $\gamma$ is the discount factor.
+* $a_{\max}(s_{t+1}; \theta^-) = \text{argmax}_{a} Q(s_{t+1}, a; \theta)$ is the action that maximizes the Q-value in the next state.
+
+---
+
+## 5. Training Algorithm (SRDDQN)
+
+```text
+Initialize replay buffer B
+Initialize policy Q-network weights θ
+Initialize target Q-network weights θ⁻ = θ
+Initialize reward network weights ϕ
+Initialize learning rates α (policy) and β (reward network)
+
+for each episode e = 1 to M:
+    for each time step t = 1 to T:
+        1. Preprocess state s_t
+        2. Select action a_t using ϵ-greedy policy:
+           a_t = argmax_a Q(s_t, a; θ) with probability (1 - ϵ), else random action
+        3. Execute a_t, observe next state s_{t+1}
+        4. Predict reward vector for all actions:
+           r_t^s = R_p(s_t; ϕ)   (using Reward Network)
+        5. Compute expert reward vector for all actions:
+           r_t^e = R_e(s_t)      (using Expert Formula)
+        6. Determine final reward labels vector (r_t^l) by selecting the element-wise maximum:
+           r_t^l = max(r_t^s, r_t^e)
+        7. Reward received by the agent for taken action a_t:
+           r_t = r_t^l[a_t]
+        8. Store transition (s_t, a_t, r_t, s_{t+1}, r_t^l) in B
+        
+        9. Sample minibatch of size N_b from B: (s_i, a_i, r_i, s_{i+1}, r_i^l)
+        10. Compute TD target y_i:
+            y_i = r_i if s_{i+1} is terminal, else:
+            y_i = r_i + γ * Q(s_{i+1}, argmax_a Q(s_{i+1}, a; θ); θ⁻)
+            
+        11. Update policy Q-network (θ) by minimizing loss:
+            L_θ = Mean((y_i - Q(s_i, a_i; θ))²)
+            θ ← θ - α * ∇ L_θ
+            
+        12. Update target Q-network parameters:
+            θ⁻ ← θ every N⁻ steps
+            
+        13. Update reward network (ϕ) by minimizing loss against selected labels r_i^l:
+            L_ϕ = Mean((r_i^l - R_p(s_i; ϕ))²)
+            ϕ ← ϕ - β * ∇ L_ϕ
+            
+        14. s_t ← s_{t+1}
+```
+
+### Key Training and Architecture Features
+* **Shared Buffer & Synchronous Training**: The experience replay buffer is shared, and both the policy network ($\theta$) and the reward network ($\phi$) are updated synchronously at each training step ($N=1, M=1$). This synchronous step-by-step training performs substantially better than delayed updates.
+* **Reward Approximation Net**: Utilizes advanced time-series feature extractors like **TimesNet** (incorporating 2D-variation modeling for period analysis), **WFTNet**, or **NLinear** to capture market features.
+
+---
+
+## 6. Hyperparameters Reference
+
+### Reward Function Networks
+* **Batch Size**: 32
+* **Learning Rate (β)**: 0.0001
+* **Optimizer**: Adam
+* **Window Size**: 20
+* **Architectures**:
+  - **TimesNet / WFTNet**: 13 CNN + 2 MLP layers, GELU activation.
+  - **NLinear**: 2 MLP layers.
+
+### Reinforcement Learning Agent
+* **Agent Network**: TimesNet
+* **Discount Factor (γ)**: 0.9
+* **Learning Rate (α)**: 0.0001
+* **Epochs/Episodes**: 100
+* **Replay Memory Size**: 1000
+* **Batch Size**: 32
+* **Greedy parameter (ϵ-greedy)**: Starts or runs at 0.9

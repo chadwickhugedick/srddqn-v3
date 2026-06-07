@@ -68,7 +68,9 @@ def main():
     exclude_cols += [f'4h_{c}' for c in exclude_cols] + [f'1d_{c}' for c in exclude_cols]
     feature_cols = [c for c in df.columns if c not in exclude_cols]
     
-    model_path = config['paths']['timesnet_model'] if 'paths' in config and 'timesnet_model' in config['paths'] else "logs/models/timesnet_reward_model.pth"
+    mode = config.get('features', {}).get('mode', 'indicators')
+    model_path = config['paths']['timesnet_model'] if 'paths' in config and 'timesnet_model' in config['paths'] else "models/timesnet_reward_{mode}.pth"
+    model_path = model_path.replace('{mode}', mode)
     
     lookback = config['environment']['lookback_window']
     fee = config['environment']['fee_pct']
@@ -96,13 +98,16 @@ def main():
         target_update_interval=config_wandb.target_update_interval,
         exploration_fraction=0.2,
         exploration_final_eps=0.05,
-        verbose=0,
+        verbose=1,
         tensorboard_log=f"logs/wandb_tensorboard/"
     )
     
+    print("\nStarting DQN sweep trial training (150,000 steps)...")
     model.learn(total_timesteps=150000)
+    print("DQN training complete. Evaluating model on validation environment...")
     
     cr, ar, sr = evaluate_model(model, val_env)
+    print(f"Trial Evaluation Results: CR={cr*100:.2f}%, AR={ar*100:.2f}%, Sharpe={sr:.4f}")
     
     wandb.log({
         "cumulative_return": cr,

@@ -22,3 +22,9 @@ wandb/
 Thumbs.db
 logs/srddqn_final.zip
 logs/srddqn_final.zip
+self-rewarding-mechanism.png
+SRDDQN-mathematics-12-04020.xml
+logs/srddqn_final.zip
+logs/best_model_srddqn/best_model.zip
+logs/plots/evaluation_srddqn_results.png
+logs/results_srddqn/evaluations.npz

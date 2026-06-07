@@ -25,10 +25,19 @@ def calculate_mdd(cumulative_returns):
     return mdd
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", default=None,
+                        help="Path to the SRDDQN model .zip file")
+    parser.add_argument("--mode", default=None,
+                        help="Feature mode (overrides config.yaml)")
+    args = parser.parse_args()
+
     config = load_config()
+    mode = args.mode or config.get('features', {}).get('mode', 'indicators')
     
     # 1. Fetch and process data automatically based on config
-    features_df, _ = get_or_fetch_data(config)
+    features_df, _ = get_or_fetch_data(config, feature_mode=mode)
     
     if features_df.empty:
         print("Error: No data fetched or generated.")
@@ -36,8 +45,17 @@ def main():
         
     df = features_df.copy()
     
-    model_path = config['paths']['best_srddqn_model'] if 'paths' in config and 'best_srddqn_model' in config['paths'] else "logs/best_model_srddqn/best_model.zip"
-    timesnet_path = config['paths']['timesnet_model'] if 'paths' in config and 'timesnet_model' in config['paths'] else "logs/models/timesnet_reward_model.pth"
+    if args.model:
+        model_path = args.model
+    else:
+        template = config.get('paths', {}).get('srddqn_model', 'models/srddqn_final_{mode}')
+        model_path = template.replace('{mode}', mode)
+        if not model_path.endswith('.zip') and not os.path.exists(model_path):
+            model_path += '.zip'
+            
+    timesnet_path_tmpl = config.get('paths', {}).get('timesnet_model',
+                                                      'models/timesnet_reward_{mode}.pth')
+    timesnet_path = timesnet_path_tmpl.replace('{mode}', mode)
     
     if not os.path.exists(model_path):
         print(f"Model not found at {model_path}.")

@@ -5,10 +5,17 @@ data:
   base_timeframe: "1h"
   start_date: "2020-01-01T00:00:00Z"
   end_date: null
-  
+
+features:
+  # Feature mode for the current run.
+  # Options: indicators | raw_ratios | raw_prices | combined_ratios | combined_prices
+  mode: "indicators"
+
 environment:
   lookback_window: 10
-  fee_pct: 0.001
+  fee_pct: 0.0002          # 0.02% per position change (realistic for hourly crypto)
+  holding_cost_pct: 0.00001 # 0.001% per step while in position (discourages overtrading)
+  bankruptcy_floor: 0.1     # Terminate episode if equity < 10% of initial
 
 timesnet:
   seq_len: 10
@@ -24,3 +31,9 @@ rl_agent:
   tau: 0.005
   gamma: 0.99
   target_update_interval: 1000
+
+paths:
+  # {mode} is replaced at runtime with the active feature_mode string.
+  timesnet_model:   "models/timesnet_reward_{mode}.pth"
+  srddqn_model:     "models/srddqn_final_{mode}"
+  ablation_results: "logs/ablation_results.csv"
