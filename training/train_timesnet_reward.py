@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.timesnet import TimesNet
+from utils.config import load_config
+from data_pipeline.fetch_data import get_or_fetch_data
 
 class MTFRewardDataset(Dataset):
     def __init__(self, df, feature_cols, reward_cols, seq_len=10):
@@ -27,19 +29,23 @@ class MTFRewardDataset(Dataset):
         return torch.tensor(x), torch.tensor(y)
 
 def main():
-    data_path = "data/processed/BTCUSDT_1h_MTF_expert.parquet"
-    if not os.path.exists(data_path):
-        print(f"Data not found: {data_path}")
+    config = load_config()
+    
+    # Fetch data automatically
+    _, df_expert = get_or_fetch_data(config)
+    
+    if df_expert.empty:
+        print("Error: No data fetched or generated.")
         return
-
-    df = pd.read_parquet(data_path)
+        
+    df = df_expert.copy()
     
     # Train/Val split
     train_size = int(len(df) * 0.8)
     train_df = df.iloc[:train_size].reset_index(drop=True)
     val_df = df.iloc[train_size:].reset_index(drop=True)
     
-    exclude_cols = ['open', 'high', 'low', 'close', 'volume', 'expert_trend', 'reward_0', 'reward_1', 'reward_2']
+    exclude_cols = ['open', 'high', 'low', 'close', 'volume', 'expert_trend', 'reward_0', 'reward_1', 'reward_2', 'symbol']
     exclude_cols += [f'4h_{c}' for c in exclude_cols] + [f'1d_{c}' for c in exclude_cols]
     
     feature_cols = [c for c in df.columns if c not in exclude_cols]
@@ -47,7 +53,8 @@ def main():
     
     print(f"Training TimesNet on {len(feature_cols)} features to predict {len(reward_cols)} expert rewards.")
     
-    seq_len = 10
+    t_conf = config['timesnet']
+    seq_len = t_conf['seq_len']
     batch_size = 128
     
     train_dataset = MTFRewardDataset(train_df, feature_cols, reward_cols, seq_len)
@@ -59,7 +66,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    model = TimesNet(seq_len=seq_len, num_features=len(feature_cols), d_model=32, d_ff=64, e_layers=2, top_k=2).to(device)
+    model = TimesNet(seq_len=seq_len, num_features=len(feature_cols), d_model=t_conf['d_model'], d_ff=t_conf['d_ff'], e_layers=t_conf['e_layers'], top_k=t_conf['top_k']).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.MSELoss()
     
@@ -100,8 +107,9 @@ def main():
         print(f"Epoch {epoch+1}/{epochs} | Train MSE: {avg_train_loss:.6f} | Val MSE: {avg_val_loss:.6f}")
         
     os.makedirs("logs/models", exist_ok=True)
-    torch.save(model.state_dict(), "logs/models/timesnet_reward_model.pth")
-    print("Saved TimesNet to logs/models/timesnet_reward_model.pth")
+    model_save_path = config['paths']['timesnet_model'] if 'paths' in config and 'timesnet_model' in config['paths'] else "logs/models/timesnet_reward_model.pth"
+    torch.save(model.state_dict(), model_save_path)
+    print(f"Saved TimesNet to {model_save_path}")
     
     plt.figure(figsize=(10, 5))
     plt.plot(train_losses, label='Train MSE')

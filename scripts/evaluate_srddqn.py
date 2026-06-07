@@ -8,6 +8,8 @@ from stable_baselines3 import DQN
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from envs.crypto_mtf_env import CryptoMtfEnv
 from envs.srddqn_wrapper import SRDRLWrapper
+from utils.config import load_config
+from data_pipeline.fetch_data import get_or_fetch_data
 
 def calculate_mdd(cumulative_returns):
     if len(cumulative_returns) == 0:
@@ -23,25 +25,37 @@ def calculate_mdd(cumulative_returns):
     return mdd
 
 def main():
-    data_path = "data/processed/BTCUSDT_1h_MTF_features.parquet"
-    model_path = "logs/best_model_srddqn/best_model.zip"
-    timesnet_path = "logs/models/timesnet_reward_model.pth"
+    config = load_config()
+    
+    # 1. Fetch and process data automatically based on config
+    features_df, _ = get_or_fetch_data(config)
+    
+    if features_df.empty:
+        print("Error: No data fetched or generated.")
+        return
+        
+    df = features_df.copy()
+    
+    model_path = config['paths']['best_srddqn_model'] if 'paths' in config and 'best_srddqn_model' in config['paths'] else "logs/best_model_srddqn/best_model.zip"
+    timesnet_path = config['paths']['timesnet_model'] if 'paths' in config and 'timesnet_model' in config['paths'] else "logs/models/timesnet_reward_model.pth"
     
     if not os.path.exists(model_path):
         print(f"Model not found at {model_path}.")
         return
-        
-    df = pd.read_parquet(data_path)
     
     train_size = int(len(df) * 0.8)
     val_df = df.iloc[train_size:].reset_index(drop=True)
     
-    exclude_cols = ['open', 'high', 'low', 'close', 'volume', 'expert_trend', 'reward_0', 'reward_1', 'reward_2']
+    exclude_cols = ['open', 'high', 'low', 'close', 'volume', 'expert_trend', 'reward_0', 'reward_1', 'reward_2', 'symbol']
     exclude_cols += [f'4h_{c}' for c in exclude_cols] + [f'1d_{c}' for c in exclude_cols]
     feature_cols = [c for c in df.columns if c not in exclude_cols]
     
-    base_env = CryptoMtfEnv(val_df, feature_cols, lookback_window=10, fee_pct=0.001)
-    env = SRDRLWrapper(base_env, model_path=timesnet_path, seq_len=10, num_features=len(feature_cols))
+    lookback = config['environment']['lookback_window']
+    fee = config['environment']['fee_pct']
+    seq = config['timesnet']['seq_len']
+    
+    base_env = CryptoMtfEnv(val_df, feature_cols, lookback_window=lookback, fee_pct=fee)
+    env = SRDRLWrapper(base_env, model_path=timesnet_path, seq_len=seq, num_features=len(feature_cols))
     
     model = DQN.load(model_path)
     

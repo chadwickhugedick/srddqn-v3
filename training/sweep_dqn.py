@@ -9,6 +9,8 @@ import wandb
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from envs.crypto_mtf_env import CryptoMtfEnv
 from envs.srddqn_wrapper import SRDRLWrapper
+from utils.config import load_config
+from data_pipeline.fetch_data import get_or_fetch_data
 
 def evaluate_model(model, env):
     obs, info = env.reset()
@@ -47,45 +49,51 @@ def evaluate_model(model, env):
 
 def main():
     wandb.init(sync_tensorboard=True)
-    config = wandb.config
+    config_wandb = wandb.config
     
-    data_path = "data/processed/BTCUSDT_1h_MTF_features.parquet"
-    if not os.path.exists(data_path):
-        print(f"Data file not found: {data_path}")
+    config = load_config()
+    features_df, _ = get_or_fetch_data(config)
+    
+    if features_df.empty:
+        print("Error: No data fetched or generated.")
         return
         
-    df = pd.read_parquet(data_path)
+    df = features_df.copy()
     
     train_size = int(len(df) * 0.8)
     train_df = df.iloc[:train_size].reset_index(drop=True)
     val_df = df.iloc[train_size:].reset_index(drop=True)
     
-    exclude_cols = ['open', 'high', 'low', 'close', 'volume', 'expert_trend', 'reward_0', 'reward_1', 'reward_2']
+    exclude_cols = ['open', 'high', 'low', 'close', 'volume', 'expert_trend', 'reward_0', 'reward_1', 'reward_2', 'symbol']
     exclude_cols += [f'4h_{c}' for c in exclude_cols] + [f'1d_{c}' for c in exclude_cols]
     feature_cols = [c for c in df.columns if c not in exclude_cols]
     
-    model_path = "logs/models/timesnet_reward_model.pth"
+    model_path = config['paths']['timesnet_model'] if 'paths' in config and 'timesnet_model' in config['paths'] else "logs/models/timesnet_reward_model.pth"
     
-    train_env = CryptoMtfEnv(train_df, feature_cols, lookback_window=10, fee_pct=0.001)
-    val_env = CryptoMtfEnv(val_df, feature_cols, lookback_window=10, fee_pct=0.001)
+    lookback = config['environment']['lookback_window']
+    fee = config['environment']['fee_pct']
+    seq = config['timesnet']['seq_len']
     
-    train_env = SRDRLWrapper(train_env, model_path=model_path, seq_len=10, num_features=len(feature_cols))
-    val_env = SRDRLWrapper(val_env, model_path=model_path, seq_len=10, num_features=len(feature_cols))
+    train_env = CryptoMtfEnv(train_df, feature_cols, lookback_window=lookback, fee_pct=fee)
+    val_env = CryptoMtfEnv(val_df, feature_cols, lookback_window=lookback, fee_pct=fee)
+    
+    train_env = SRDRLWrapper(train_env, model_path=model_path, seq_len=seq, num_features=len(feature_cols))
+    val_env = SRDRLWrapper(val_env, model_path=model_path, seq_len=seq, num_features=len(feature_cols))
     
     train_env = Monitor(train_env)
     
     model = DQN(
         "MlpPolicy", 
         train_env, 
-        learning_rate=config.learning_rate, 
-        buffer_size=config.buffer_size,
+        learning_rate=config_wandb.learning_rate, 
+        buffer_size=config_wandb.buffer_size,
         learning_starts=10000,
-        batch_size=config.batch_size,
-        tau=config.tau,
-        gamma=config.gamma,
+        batch_size=config_wandb.batch_size,
+        tau=config_wandb.tau,
+        gamma=config_wandb.gamma,
         train_freq=4,
         gradient_steps=1,
-        target_update_interval=config.target_update_interval,
+        target_update_interval=config_wandb.target_update_interval,
         exploration_fraction=0.2,
         exploration_final_eps=0.05,
         verbose=0,

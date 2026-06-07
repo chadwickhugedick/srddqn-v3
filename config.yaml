@@ -1,0 +1,26 @@
+data:
+  exchange: "bybit"
+  symbols:
+    - "BTC/USDT"
+  base_timeframe: "1h"
+  start_date: "2020-01-01T00:00:00Z"
+  end_date: null
+  
+environment:
+  lookback_window: 10
+  fee_pct: 0.001
+
+timesnet:
+  seq_len: 10
+  d_model: 32
+  d_ff: 64
+  e_layers: 2
+  top_k: 2
+
+rl_agent:
+  learning_rate: 0.0003
+  buffer_size: 100000
+  batch_size: 128
+  tau: 0.005
+  gamma: 0.99
+  target_update_interval: 1000

@@ -33,32 +33,50 @@ class SRDRLWrapper(gym.Wrapper):
             raise FileNotFoundError(f"TimesNet model not found at {model_path}")
             
         self.timesnet.eval()
+        
+        # PRECOMPUTE REWARDS FOR ENTIRE DATASET
+        unwrapped_env = self.env.unwrapped
+        total_steps = len(unwrapped_env.features)
+        self.precomputed_rewards = np.zeros((total_steps, 3), dtype=np.float32)
+        
+        print(f"Precomputing TimesNet rewards for {total_steps} timesteps on {self.device}...")
+        
+        batch_size = 1024
+        valid_indices = []
+        valid_seqs = []
+        
+        for i in range(self.seq_len, total_steps):
+            valid_indices.append(i)
+            valid_seqs.append(unwrapped_env.features[i - self.seq_len : i])
+            
+        if len(valid_seqs) > 0:
+            valid_seqs = np.array(valid_seqs, dtype=np.float32)
+            
+            for i in range(0, len(valid_seqs), batch_size):
+                batch = torch.tensor(valid_seqs[i:i+batch_size]).to(self.device)
+                with torch.no_grad():
+                    preds = self.timesnet(batch).cpu().numpy()
+                self.precomputed_rewards[valid_indices[i:i+batch_size]] = preds
+                
+        print("TimesNet precomputation complete! RL training will now run at full speed.")
+        
+        # Free memory since we won't need the model for stepping anymore
+        del self.timesnet
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def step(self, action):
         # Take step in the underlying environment
         obs, reward, terminated, truncated, info = self.env.step(action)
         
-        # Get the underlying sequence of features for TimesNet
-        # The base CryptoEnv stores historical features
         unwrapped_env = self.env.unwrapped
+        current_step = unwrapped_env.current_step
         
-        start_idx = unwrapped_env.current_step - self.seq_len
-        end_idx = unwrapped_env.current_step
-        
-        if start_idx >= 0:
-            hist_features = unwrapped_env.features[start_idx:end_idx]
-            
-            # Predict reward via TimesNet
-            with torch.no_grad():
-                x = torch.tensor(hist_features, dtype=torch.float32).unsqueeze(0).to(self.device) # [1, Seq, Feat]
-                pred_rewards = self.timesnet(x).squeeze(0).cpu().numpy() # [3]
-                
-            # The action passed in is 0 (Flat), 1 (Long), or 2 (Short)
-            r_timesnet = pred_rewards[action]
+        if current_step >= self.seq_len and current_step < len(self.precomputed_rewards):
+            # Fetch the precomputed TimesNet prediction for this step
+            r_timesnet = self.precomputed_rewards[current_step][action]
             
             # The SRDRL Mechanism: max(r_env, r_timesnet)
-            # This ensures the agent gets a positive reward if the macro trend is favorable,
-            # even if the immediate 1H step was noisy or hit a small fee.
             final_reward = max(float(reward), float(r_timesnet))
         else:
             final_reward = reward

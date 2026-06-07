@@ -14,8 +14,15 @@ dependencies = [
     "pyarrow (>=24.0.0,<25.0.0)",
     "fastparquet (>=2026.5.0,<2027.0.0)",
     "matplotlib (>=3.10.9,<4.0.0)",
-    "pyyaml (>=6.0.3,<7.0.0)"
+    "pyyaml (>=6.0.3,<7.0.0)",
+    "ccxt (>=4.5.56,<5.0.0)",
+    "wandb (>=0.19.1,<0.20.0)"
 ]
+
+[tool.poetry.dependencies]
+torch = {version = ">=2.5.0,<3.0.0", source = "pytorch"}
+torchvision = {version = ">=0.20.0,<1.0.0", source = "pytorch"}
+torchaudio = {version = ">=2.5.0,<3.0.0", source = "pytorch"}
 
 
 [build-system]

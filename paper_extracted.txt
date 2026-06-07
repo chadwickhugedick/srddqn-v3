@@ -1,0 +1,1377 @@
+Article
+A Self-Rewarding Mechanism in Deep Reinforcement Learning
+for Trading Strategy Optimization
+YulingHuang1 ,ChujinZhou2,LinZhang3,XiaopingLu2,*
+1 SchoolofComputerScienceandSoftware,ZhaoqingUniversity,Zhaoqing526060,China;
+huangyuling@zqu.edu.cn
+2 SchoolofComputerScienceandEngineering,MacauUniversityofScienceandTechnology,Taipa999078,
+Macao, China;3220002751@student.must.edu.mo
+3 SchoolofAccountingandFinance,BeijingInstituteofTechnology,Beijing100811,China;08110@bitzh.edu.cn
+* Correspondence:xplu@must.edu.mo
+Abstract: ReinforcementLearning(RL)isincreasinglybeingappliedtocomplexdecision-making
+taskssuchasfinancialtrading. However, designingeffectiverewardfunctionsremainsasignif-
+icantchallenge. Traditionalstaticrewardfunctionsoftenfailtoadapttodynamicenvironments,
+leadingtoinefficienciesinlearning. Thispaperpresentsanovelapproach,calledSelf-Rewarding
+DeepReinforcementLearning(SRDRL),whichintegratesaself-rewardingnetworkwithintheRL
+framework. TheSRDRLmechanismoperatesintwoprimaryphases: First, supervisedlearning
+techniquesareusedtolearnfromexpertknowledgebyemployingadvancedtime-seriesfeature
+extractionmodels,includingTimesNetandWFTNet.Thissteprefinestheself-rewardingnetwork
+parametersbycomparingpredictedrewardswithexpert-labeledrewards,whicharebasedonmetrics
+such as Min-Max, Sharpe Ratio, and Return. In the second phase, the model selects the higher
+valuebetweentheexpert-labeledandpredictedrewardsastheRLreward,storingitinthereplay
+buffer.Thiscombinationofexpertknowledgeandpredictedrewardsenhancestheperformanceof
+tradingstrategies.Theproposedimplementation,calledSelf-RewardingDoubleDQN(SRDDQN),
+demonstratesthattheself-rewardingmechanismimproveslearningandoptimizestradingdecisions.
+ExperimentsconductedondatasetsincludingDJI,IXIC,andSP500showthatSRDDQNachievesa
+cumulativereturnof1124.23%ontheIXICdataset,significantlyoutperformingthenextbestmethod,
+Fire(DQN-HER),whichachieved51.87%. SRDDQNalsoenhancesthestabilityandefficiencyof
+Citation:Huang,Y.;Zhou,C.;Zhang,
+tradingstrategies,providingnotableimprovementsovertraditionalRLmethods.Theintegrationof
+L.;Lu,X.ASelf-Rewarding
+aself-rewardingmechanismwithinRLaddressesacriticallimitationinrewardfunctiondesignand
+MechanisminDeepReinforcement
+offersascalable,adaptablesolutionforcomplex,dynamictradingenvironments.
+LearningforTradingStrategy
+Optimization.Mathematics2024,12,
+4020. https://doi.org/10.3390/ Keywords: deepreinforcementlearning; self-rewardingmechanism; humanalignment; trading
+math12244020 strategy
+AcademicEditor:IoannisTsoulos
+MSC:68T07
+Received:11November2024
+Revised:16December2024
+Accepted:19December2024
+Published:22December2024 1. Introduction
+ReinforcementLearning(RL),akeytechnologyinthefieldofArtificialIntelligence,
+hasshowngreatpotentialinsolvingcomplexdecision-makingtasksinrecentyears,espe-
+ciallyinthefieldsofgaming,fine-tuninglargelanguagemodels,andalgorithmictrading.
+Copyright: © 2024 by the authors.
+However,acentralchallengeinreinforcementlearningisdesigningrewardfunctionsthat
+Licensee MDPI, Basel, Switzerland.
+arebothdynamicandeffective. Rewardfunctions,whichareacorecomponentofrein-
+Thisarticleisanopenaccessarticle
+forcementlearning,haveadecisiveimpactonthelearningprocessandthedevelopmentof
+distributed under the terms and
+thefinalstrategy. Traditionalreinforcementlearningmethodstypicallyrelyonpredefined
+conditionsoftheCreativeCommons
+Attribution(CCBY)license (https:// staticrewardfunctions[1–10]. Althoughtheseapproachescanachievethedesiredgoal
+creativecommons.org/licenses/by/ tosomeextent,theirlimitationsbecomeapparentwhenfacedwithunstableandcomplex
+4.0/). environmentssuchasfinancialmarkets. Predefinedrewardfunctionsoftenlacksufficient
+Mathematics2024,12,4020.https://doi.org/10.3390/math12244020 https://www.mdpi.com/journal/mathematics
+
+--- PAGE 1 BREAK ---
+
+Mathematics2024,12,4020 2of25
+flexibility,makingitdifficulttoadapttodynamicchangesintheenvironment,thuslimiting
+theperformanceandadaptabilityofthealgorithm.
+To overcome this challenge, researchers have begun to explore more adaptive ap-
+proaches, such as utilizing neural networks to learn reward functions. This approach
+allowstherewardfunctiontobeadjustedinreal-timeaccordingtothedynamicsofthe
+environmentbyallowingtheneuralnetworktoautomaticallylearntherewardfunction
+fromthedata[11–14]. Thisdynamicrewardfunctionnotonlyimprovestheadaptability
+ofthealgorithm,butalsoenablesittobetterhandlecomplexrelationshipsandachieve
+better generalization performance across various datasets. In addition, recent research
+hasfocusedoncombiningdomainknowledgewithreinforcementlearning. Techniques
+suchasrewardshapingenabledomainknowledgetobeeffectivelyincorporatedintothe
+reinforcementlearningprocess,improvingtheefficiencyandperformanceofalgorithms.
+Meanwhile,theproposaloftheself-supervisedreinforcementlearning(SSRL)framework
+providesnewavenuesforreinforcementlearning. Thisframeworkhelpsreinforcement
+learningbyextractingusefulinformationfromdatausingunsupervisedlearningmethods,
+furtherenhancingtheadaptabilityandgeneralizationcapabilitiesofthealgorithm[15].
+With the continuous development of large language models, various fine-tuning
+methodshaveemerged.Forexample,humanfeedback-basedfine-tuningmethodsoptimize
+modelbehaviorbyincorporatingtheknowledgeofhumanexperts,enablingthemodel
+tobettermatchhumanexpectationsandneeds[16,17]. Inaddition,methodssuchasself-
+rewardinglanguagemodels[18]andDirectLargeModelAlignment(DLMA)[19]provide
+newideasforreinforcementlearning. Thesemethodsenhancethequalityandefficiencyof
+trainingresultsbyenablingmodelstoiterativelyrefinetheirrewardsystems.
+Inspired by these advances, this paper introduces an innovative Self-Rewarding
+Deep Reinforcement Learning (SRDRL) mechanism that incorporates a self-rewarding
+systemintovariousRLalgorithms,includingvalue-based,policy-based,andactor-critic
+approaches. TheproposedmechanismallowsthemodeltoupdateitsRLstrategybyse-
+lectingthehigherrewardfromeitheritsownpredictedrewardsorexpert-labeledrewards
+(expertknowledge)duringthetrainingprocess. Thisensuresthattheagentseffectively
+combineexpertknowledgewithlearnedpredictions,leadingtoinformedandprofitable
+tradingdecisionswhileoptimizingoverallstrategyperformance. Basedonexperimental
+comparisons,weconcludethatthevalue-basedapproachismoreapplicabletothefinancial
+domain. Consequently,thispaperintroducesaself-rewardingmechanismwithDouble
+DeepQ-Network(DDQN),namedSelf-RewardingDoubleDeepQ-Network(SRDDQN),
+specificallyforfinancialtradingstrategiestooptimizerewardallocationbasedondifferent
+expert labels (e.g., metrics such as Min-Max, Sharpe Ratio, and Return). Additionally,
+advancedtime-seriesfeatureextractionnetworks(e.g.,TimesNet,WFTNet,NLinear)are
+utilizedtoapproximatetheself-rewardingnetwork. Thismethodimprovesperformance
+andscalabilitybycomparingpredictedrewardswithexpert-definedrewardlabels,lever-
+aginganadvancedtime-seriesfeatureextractionnetworktoenablethemodeltoself-adjust
+itsrewardstrategy,thusproposingatradingstrategythatcanadaptundercomplexmar-
+ketconditions.
+Themajorcontributionsofthisstudyareoutlinedasfollows:
+• Theintroductionofanovelself-rewardingmechanismforDeepReinforcementLearn-
+ing(DRL),namedtheSRDRLmechanism,whichdynamicallyadjustsrewardstruc-
+tures in real-time based on direct market feedback. This mechanism is applicable
+acrossavarietyofRLalgorithms,includingvalue-based,policy-based,andactor-critic
+methods. SRDDQN,astheimplementationofSRDRL’svalue-basedRLapproach,
+demonstrates that the self-rewarding training mechanism refines the learning pro-
+cessanddrivestheagenttomakeinformedandprofitabletradingdecisionswhile
+optimizingtheoverallstrategyperformance.
+• AnovelRLrewardmechanismisdesigned,whichselectsthehigheroftheexpert-
+definedrewardandtheself-predictedrewardgeneratedbytheself-rewardingnet-
+work. Thishybridrewardapproachensuresthatagentseffectivelycombineexpert
+
+--- PAGE 2 BREAK ---
+
+Mathematics2024,12,4020 3of25
+domainknowledgewiththeirownlearnedpredictions,leadingtomoreinformedand
+profitabletradingdecisionswhileimprovingtheoverallstrategyperformance.
+• ThedevelopmentofSRDDQN,animplementationoftheself-rewardingmechanism
+withintheDoubleDeepQ-Network(DQN)framework,addressestheoverestimation
+biascommoninstandardDQNmodels. Byintegratingaself-rewardingnetworkinto
+thedoubleQ-learningprocess,themodelenhancesstabilityandimprovestheagent’s
+abilitytomakedecisionsindynamic,uncertainfinancialmarkets.
+• Theintegrationofadvancedtime-seriesfeatureextractiontechniques,includingnet-
+workssuchasTimesNet,WFTNet,andNLinear,withintheself-rewardingframework
+significantlyenhancestheaccuracyofrewardpredictions. Thisfusionofadvanced
+featureextractionwiththeself-rewardingarchitecturestrengthensthesystem’sability
+toadapttovolatilemarketconditionsanddelivermoreprecisetradingstrategies.
+This paper is organized as follows: In Section 2, previous studies on the topic are
+reviewed. Section3detailstheproposedmethod. Experimentalresultsaredescribedand
+analyzedinSection4. Finally,Section5summarizesthefindingsanddiscussesfuturework.
+2. RelatedWork
+To deepen the understanding of the connections and distinctions in the literature
+relatedtotheproposedmethodology,thissectioncloselyexaminestwokeyresearchareas:
+rewardfunctionsinRLanddeepreinforcementlearninginalgorithmictrading. Discussing
+andreviewingtheserelatedstudiesaimstoprovideafocusedandorganizedreviewof
+currentresearchtrends.
+2.1. RewardFunctionsinReinforcementLearning
+Traditionalrewardfunctionsinreinforcementlearninghavepredominantlybeende-
+signedbasedonhumanexperienceandfixedformulas,focusingoncalculatingthereward
+valueforeachstepinsingle-assettradingstrategies. Thedesignofrewardfunctionsisa
+criticalaspectofRLasitdirectlyinfluencestheagent’sbehaviorandtheoverallperfor-
+manceofthelearningalgorithm. Thedesignofrewardfunctionscanvarysignificantly
+dependingonthespecificobjectivesandpreferencesoftheinvestorsinvolvedintrading
+strategies[1–5,7,9,10,20–26].
+Forinvestorswhoarerisk-averse,incorporatingriskmeasuresintotherewardfunc-
+tionisessential. AcommonapproachistousetheSharpeRatio,whichbalancesreturns
+againstthevolatilityofthosereturns,therebyprovidingameasureofrisk-adjustedperfor-
+mance. ThisallowstheRLagenttooptimizenotjustforprofitabilitybutalsoforstabilityin
+returns,aligningwiththepreferencesofrisk-averseinvestors[2,3,10,21,24]. Forexample,
+Rodinosetal. proposedareward-shapingmethodbasedontheSharperatio,optimizing
+DRLagentsbyconsideringbothProfit&Loss(PnL)andtheSharperatio. Thismethod
+aimstoimproveoverallportfolioperformancebyreducingtheriskstemmingfromthe
+agent’sdecisions[27]. However,someinvestorsprioritizeshort-termgainsandmayprefer
+rewardfunctionsthatemphasizeimmediatereturns. Byfocusingonimmediatereturns,
+theRLagentcanbeguidedtomakedecisionsthatmaximizeshort-termprofitability,which
+isparticularlyappealinginfast-pacedtradingenvironmentswherequickgainsareval-
+ued[1,7,9,26,28]. Furthermore,thereareinvestorswhoadoptamulti-objectiveperspective,
+seekingtobalancebothshort-termreturnsandriskmeasuressuchastheSharpeRatio.
+Insuchcases,therewardfunctionisdesignedtoincorporatemultipleobjectives,allowing
+theRLagenttooptimizeforacombinationofimmediateprofitabilityandrisk-adjusted-
+performance. Thismulti-objectiveapproachprovidesamorecomprehensiveframework
+for strategy optimization, catering to investors with diverse preferences. For example,
+Cornalbaetal.investigatedtheeffectivenessofmulti-objectivedeepreinforcementlearning
+in stock and cryptocurrency trading, dynamically incorporating reward functions and
+discountfactorsintothelearningprocess[29].
+However,relianceonhumanfeedbackandfixedformulasoftenlimitsthescalability
+andadaptabilityofmodels, especiallyinalgorithmictrading, wheremarketconditions
+
+--- PAGE 3 BREAK ---
+
+Mathematics2024,12,4020 4of25
+are dynamic. Recent advancements include learning reward functions through neural
+networks,whichofferadaptabilitytonewdata,thecapabilitytomodelcomplexrelation-
+shipsandimprovedgeneralization. GrzesandKudenkoexploredtheenhancementofRL
+techniquesthroughtheincorporationofdomainknowledge,addressingthechallenges
+facedbyRLincomplexdomainsduetoscalabilityissues[11]. Theirstudyintroducedthe
+applicationofhigh-levelSTRIPSoperatorknowledgeinrewardshapingtorefinethesearch
+towardstheoptimalpolicy. ProperandTumerintroducedamethodformodelingglobalre-
+wardsthroughfunctionapproximation,enablingthefastcomputationofshapeddifference
+rewards[12]. Lietal. developedenhancedversionsoftheDQNandAsynchronousAdvan-
+tageActor-critic(A3C)algorithms,applyingthemtothetradingmarket[13]. Theirreward
+function was designed around the Sharpe ratio to optimize risk-adjusted returns from
+tradingbehavior.HuangandJindiscussedtheapplicationandimpactofrewardshapingin
+self-organizingsystems,especiallyinthecontextofmulti-agentreinforcementlearning[14].
+Nairetal. introducedaninnovativeapproachtorepresentationlearning,enhancingthe
+abilityofpoliciesandrewardfunctionstogeneralizeacrossnewdomains[30]. Thisad-
+vancementmeansthatininstanceswhereadirectlylearnedpolicymaynotimmediately
+applytoanunfamiliarsituation(zero-shotgeneralizationfailure),ageneralizedreward
+functioncanstillbeemployedtorefinetherobot’spolicy. Thisensuresadaptabilityand
+continuedperformanceimprovementwhenfacingpreviouslyunseenchallenges.Moreover,
+theinclusionofmarketsensitivityandsentimentanalysisinrewardfunctionshasbeen
+noted,withmodelsbeingdevelopedthatresponddynamicallytomarketsentimentsand
+fluctuations [31,32]. This is particularly beneficial in trading, where real-time feedback
+iscrucial.
+Emerging trends show a move toward self-supervised frameworks. Zhang et al.
+proposedaSelf-SupervisedReinforcementLearning(SSRL)frameworkwithadual-reward
+mechanismtoenhancerecommendationaccuracyandprovideexplanationsbynavigating
+knowledgegraphs[15]. TraditionalRLmethodsinthisdomainoftenrelyonasingular,
+short-term reward, which may trap the learning process in local optima and overlook
+valuable paths. Yuan et al. proposed Self-Rewarding Language Models, in which the
+language model provides its own rewards during training through “LLM-as-a-Judge”
+prompts[18]. Thismethodnotonlyimprovedinstruction-followingabilityduringiterative
+DirectPreferenceOptimization(DPO)trainingbutalsoincreasedthequalityoftherewards
+provided by the model itself. Liu et al. introduced a novel method for automatically
+aligninglargelanguagemodels,DLMA[19].Theprocessinvolvesusingcontrastiveprompt
+pairstoautonomouslygeneratepreferencedata,whicharefurtherassessedtoderivea
+self-rewardingscore. ThefinalstepemploystheDPOalgorithm,whichincorporatesthis
+self-rewardingscoretoefficientlyalignlargelanguagemodels.
+Thisevolvinglandscapehighlightsashiftfromtraditional,staticrewardfunctionsto
+dynamic,self-rewardingmodelsthatpromisemoreresponsiveandprofitableoutcomesin
+algorithmictradingbyenablingalgorithmstoautonomouslyrefinetheirstrategiesbased
+oncontinuouslearningandreal-timemarketfeedback. Thisshiftnotonlyovercomesthe
+limitationsimposedbyhuman-basedrewardsystemsbutalsoopensnewpossibilitiesfor
+autonomouslearningandself-improvementinvariousapplications.
+2.2. DeepReinforcementLearninginAlgorithmicTrading
+Algorithmictradingemployscomputerprogramstoexecutehigh-speed,high-volume
+trades based on predefined rules and parameters, quickly reacting to market changes
+and capitalizing on short-term price fluctuations [33]. This approach has grown with
+advancements in technology, data availability, and the rise of high-frequency trading,
+therebyenhancingmarketliquidityandreshapingtradingplatforms[34–36].
+Theintegrationofmachinelearningalgorithmsintoalgorithmictradingoffersamore
+adaptable,data-driven,andunbiasedmethod,optimizingreturnsandmanagingrisks[22].
+Thesealgorithmsprocessvastdatasets,eliminatingemotionalbiasandincreasingtrading
+speed,whicharecrucialinmarketssuchasequities,futures,andforeignexchange[37,38].
+
+--- PAGE 4 BREAK ---
+
+Mathematics2024,12,4020 5of25
+IntheapplicationofDRLtoalgorithmictrading,theprocesstypicallyinvolvesdefin-
+ingatradingenvironmentwheretheagentinteractswithmarketdatatomakebuy,sell,
+orholddecisions. TheDRLagentreceivesstateinformationfromthemarket,suchasprice
+movements,volume,andotherrelevantindicators,andlearnstomaximizecumulative
+rewards,whichareoftentiedtoprofitabilityorrisk-adjustedreturns. Thislearningprocess
+involvesexploringvarioustradingstrategiesandexploitingthemosteffectiveonesbased
+onfeedbackfromtheenvironment. KeychallengesinapplyingDRLtotradinginclude
+thenon-stationarynatureoffinancialmarkets,wheretheunderlyingdatadistributioncan
+change over time, making it difficult for the agent to generalize from past experiences.
+Additionally,thehighdimensionalityandnoisepresentinfinancialdatacanhinderthe
+learningprocess, requiringsophisticatedtechniquesforfeatureextractionandnoisere-
+duction. Another significant challenge is ensuring the stability and convergence of the
+DRLalgorithms,asfinancialmarketsarehighlyvolatileandcanleadtounstabletraining
+dynamics. Furthermore,theriskofoverfittinghistoricaldataposesathreattotherobust-
+nessofthedevelopedtradingstrategies,necessitatingrobustvalidationmethodstoensure
+performanceinlivetradingscenarios.
+Recentresearchhasexploredvariousaspectsofalgorithmictrading,includingrisk
+management,post-tradeanalysis,andtradingindifferentassetslikecryptocurrenciesand
+single stocks [39–42]. Innovations in DRL have led to the development of models that
+significantlyenhancetheefficiencyandaccuracyoftradingstrategies[43,44].
+SignificantadvancementshavebeenmadeintheapplicationofDRLtostocktrading.
+Forinstance,KongandSointroducedtheRemakeEnsemble,acombinationofmultipleDRL
+methods,therebyenhancingautomatedstocktradingperformance[45]. Kochliaridisetal.
+combinedDRLwithrule-basedsystemsandadvancedneuralarchitecturesliketransform-
+ersandU-Nets,improvingadaptabilitytomarketconditions[32,46]. Zouetal. proposeda
+modelusingcascadedLong-ShortTermMemory(LSTM)networkstobetterhandlethe
+noisyfinancialdatatypicalofstockmarkets[47].
+Further,Avramelouetal. introducedmodelsthatintegratediversedatatypes,suchas
+marketsentimentandpriceinformation,withDRLtocreateadaptivetradingstrategies
+withouttheneedforretraining[48,49]. Parketal. demonstratedtheefficacyofDRLusing
+arobottrainedwithvarieddatasetstoperformcomparativestockinvestmentanalyses[50].
+Lastly,Takaraetal. developedtheExtendedTradingDeepQ-Network(ETDQN)model,
+whichadjustsitslearningprocesstotradeefficientlyundervaryingmarketconditionsand
+employsdistributedlearningtoenhanceitsDRLcapabilities[51].
+Intherealmofalgorithmictrading,advancementsinDRLaresignificantlyenhancing
+tradingstrategiesthroughtheintegrationofmachinelearningalgorithms. Theseinnova-
+tionsareoptimizingreturnsandmanagingrisksbyprocessingvast,complexdatasetsto
+makeunbiased,high-speedtradingdecisions.
+2.3. Motivation
+DespitetheadvancementsinDRLforalgorithmictrading,severalchallengespersist
+that hinder the optimization of trading strategies. Traditional DRL approaches often
+strugglewiththehighdimensionalityandnon-stationarityoffinancialdata,leadingto
+difficulties in capturing complex market dynamics. Additionally, these methods may
+sufferfromoverfitting,wheremodelsperformwellonhistoricaldatabutfailtogener-
+alize to unseen market conditions. Furthermore, the balance between exploration and
+exploitation in trading strategies remains a critical issue, as excessive exploration can
+leadtosignificantfinanciallosses,whileinsufficientexplorationmayresultinsuboptimal
+strategyperformance.
+Motivatedbythesechallenges,ourresearchintroducesaself-rewardingmechanism
+withintheDRLframeworktoenhancetradingstrategyoptimization. Theself-rewarding
+mechanismisdesignedtodynamicallyadjustrewardsignalsbasedonmarketconditions
+and trading performance, thereby improving the agent’s ability to adapt to changing
+environmentsandmitigatetheriskofoverfitting. Byincorporatingthismechanism,we
+
+--- PAGE 5 BREAK ---
+
+Mathematics2024,12,4020 6of25
+aimtodevelopmorerobustandefficienttradingstrategiesthatcanbetternavigatethe
+complexitiesoffinancialmarkets. Thismotivationunderscoresthenecessityforinnovative
+approachesinDRLtoachievesuperiorperformanceandreliabilityinalgorithmictrading.
+3. Method
+Thispaperformalizessingle-assettradingasaMarkovdecisionprocesswithinanRL
+framework. Theagentgeneratesoptimaltradingstrategiesandexecutionsbyexploring
+aseriesofactionsinatradingenvironment. Thestateconsistsoftheopening,high,low,
+closingprices,andtradingvolumefromthepast20daysand20weeksattimet.Actionsare
+defineddiscretelyasbuy,sell,andhold. Moredetailsareprovidedin[52]. Self-rewarding
+functionlabelsuseMin-Max[52],SharpeRatio[44],andReturn[53]indicators.
+However,inexploringtheintricaciesofstocktradingdecisions,theneedtoestablish
+the necessary assumptions to confirm the reliability of the conclusions is emphasized.
+Themodelassumesmarketefficiency,wherepricesreflectallavailableinformation,with-
+out being affected by external market influences. Building upon the Efficient Markets
+Hypothesis(EMH),whichpositsthatfinancialmarketsarehighlyefficientinreflecting
+information,weincorporatetheAdaptiveMarketsHypothesis(AMH)toaccountforthe
+dynamicandevolvingnatureofmarketparticipantsandconditions. AMHsuggeststhat
+marketefficiencyisnotstaticbutadaptsbasedonenvironmentalchangesandthelearning
+behaviorsofinvestors,providingamoreflexibleandrealisticframework,especiallyinless
+liquidmarketsorduringperiodsofhighvolatility. Italsoassumesthatindividualtrading
+ordersbysmallinvestorsdonotsignificantlyimpactmarketpricesduetothemarket’s
+high liquidity and that there is no slippage in order execution. These assumptions are
+necessaryforthesimulationenvironmentbutmaynotholdunderallmarketconditions,
+whichshouldbeconsideredwhenapplyingthismodeltoreal-worldscenarios.
+3.1. OverviewoftheProposedMethod
+Inspiredbyself-rewardinglanguagemodels,thispaperproposesaninnovativeself-
+rewardingdeepreinforcementlearning(SRDRL)approachthatintegratesself-rewarding
+mechanisms into an RL framework, aiming to enhance the framework’s capabilities in
+complex decision-making scenarios. As shown in Figure 1, the process is divided into
+twokeyphasesaimedatrefiningthelearningprocessandimprovingtheefficiencyofthe
+tradingstrategiesformulatedbytheRLmethod.
+Figure1providesacomprehensiveschematicoftheSRDRLframework,illustrating
+theflowofdataandinteractionbetweenthemaincomponents. TheSRDRLframework
+comprisesseveralmaincomponents: rawdataprocessing,environment,replaymemory,
+andthetradingagent,whichincludestheQNetwork,TargetNetwork,andRewardNet-
+work. TherawdatamoduleprocessesinputdatasuchasdailyandweeklyOHLC(Open,
+High,Low,Close)pricesandvolumedatatoconstructstatefeatures. Thesefeaturesare
+thenfedintotheenvironment,whichdynamicallytracksparameterslikeprices,trading
+volume,capital,position,andtradingcosts. Theenvironmentgeneratesstateandreward
+informationthatdrivesthereinforcementlearningprocess. Thetradingagentconsistsof
+threeinterconnectednetworks: theQNetworkandTargetNetworkemployreinforcement
+learning algorithms to refine policy optimization through iterative updates of network
+parameters. Leveragingsupervisedlearningtechniques, theRewardNetworkpredicts
+rewardsbasedonadvancedtime-seriesfeatureextractionmodelssuchasTimesNet,WFT-
+Net,andNLinear. Itapproximatesexpert-labeledrewardfunctions,enablingthesystem
+to evaluate the quality of actions taken. The computed actions and associated rewards
+arestoredintheReplayMemory,whichisinstrumentalinexperiencereplayandbatch
+samplingduringtraining.
+
+--- PAGE 6 BREAK ---
+
+Mathematics2024,12,4020 7of25
+Figure1.ThestructureoftheproposedSRDDQN.TheSRDRLframeworkcomprisesfourcomponents.
+TherawdatamoduleprocessesinputdatasuchasdailyandweeklyOHLC(Open,High,Low,Close)
+pricesandvolumedatatoconstructstatefeatures.Thesefeaturesarethenfedintotheenvironment,
+whichdynamicallytracksparameterslikeprices,tradingvolume,capital,position,andtradingcosts.
+Theenvironmentgeneratesstateandrewardinformationthatdrivesthereinforcementlearning
+process. Thetradingagentconsistsofthreeinterconnectednetworks: theQNetworkandTarget
+Networkemployreinforcementlearningalgorithmstorefinepolicyoptimizationthroughiterative
+updatesofnetworkparameters.Leveragingsupervisedlearningtechniques,theRewardNetwork
+predictsrewardsbasedonadvancedtime-seriesfeatureextractionmodelssuchasTimesNet,WFTNet,
+andNLinear.Itapproximatesexpert-labeledrewardfunctions,enablingthesystemtoevaluatethe
+qualityofactionstaken. ThecomputedactionsandassociatedrewardsarestoredintheReplay
+Memory,whichisinstrumentalinexperiencereplayandbatchsamplingduringtraining.
+TheSRDRLframeworkoperatesintwophases. Inthefirstphase,themodelemploys
+supervised learning techniques to learn expert experience by approximating the self-
+rewardingfunctionusingadvancedtime-seriesfeatureextractionnetworks(e.g.,TimesNet,
+WFTNet, and NLinear). This approach allows the model to update the self-rewarding
+functionparametersbycomparingitsownpredictedrewardswiththerewardlabelsset
+byexpertsbasedonvariousmetricssuchasMin-Max,SharpeRatio,andReturnduring
+thetrainingprocess,selectingthebetterrewardsaslabelsforsupervisedlearning. This
+methodallowsthemodeltoself-tuneitsrewardstrategy,whichimprovesperformance
+andscalability. Thegoalistobuildamoregeneralizedrewardnetworkthatisadeptat
+navigatingthemultifacetednatureoffinancialmarketsandcapturingthewiderangeof
+marketdynamicsandtraderintuitioncontainedinexpertrewardfunctions.
+Inthesecondstage,thehigherbetweentheexpertrewardlabelandtheself-rewarding
+networkpredictedrewardisselected,whichisthenusedastherewardfortheRLframe-
+work and stored in the replay buffer. This method dynamically adjusts the learning
+trajectorybasedonacomparativeanalysisoftherewardsgeneratedbytheexpertreward
+andself-rewardingnetworks. Byprioritizinghigherrewards,thesysteminherentlytends
+tomakemoreprofitableandstrategicallysoundtradingdecisions, thusoptimizingthe
+overallperformanceofthetradingstrategy. Thefocusofthispaperistodevelopaself-
+rewardingDoubleDQNdesignedspecificallyforfinancialtradingstrategiestooptimize
+rewardallocationstrategiesbasedondifferentexpertlabels.
+
+--- PAGE 7 BREAK ---
+
+Mathematics2024,12,4020 8of25
+Thetwo-phaseintegrationoftheself-rewardingmechanismultimatelycreatesaself-
+rewardingdeepreinforcementlearningenvironment. Thisenvironmentnotonlyallows
+forcontinuousimprovementthroughtheRLprocessbutalsofacilitatesthedevelopment
+ofmorecomplexandpowerfulrewardnetworks. Thefusionofadvancedfeatureextrac-
+tion,expertknowledgeintroduction,anddynamicrewardselectionresultsinalearning
+mechanismthatisbothadaptableandrobust.
+3.2. Self-RewardingMechanism
+IntraditionalRL,therewardfunctionisoftenmanuallydesignedandfixed,whichcan
+belimitingindynamicenvironmentssuchasfinancialmarkets. Thissubsectionintroduces
+a novel self-rewarding mechanism tailored for deep reinforcement learning, aimed to
+enhancetheperformanceofoptimizedsingle-assettradingstrategies. Aself-rewarding
+mechanismallowstheagenttoadaptitsrewardfunctionbasedontheenvironmentand
+learningprocess, makingitmoreflexibleandresponsivetochanges. TheRLagentcan
+dynamicallygenerateitsownrewardsignals,insteadofrelyingsolelyonpredefined,static
+reward functions provided by human experts. As shown in Figure 2, the mechanism
+employs a training method similar to regression analysis. It assigns reward values to
+variousstatesbasedonpotentialactions,identifiesthehighestrewardsfromtheseactions,
+and updates the learning based on the mean-square error with respect to the expert-
+definedrewards. Theproposedmethodusessupervisedlearningtocombinetheinsights
+ofexperiencedmarketpractitionerswithadvancedtimeseriesfeatureextractionnetworks,
+such as TimesNet [54], NLinear [55], and WFTNet [56]. These networks approximate
+a self-rewarding function, predict reward values, and then use expert-defined reward
+valuesaslabels. Trainingthroughabackpropagationprocessguidedbymeansquareerror
+computationhelpsimprovetheaccuracyofrewardprediction.
+Figure 2. The schematic representation of the Reward Net. The Reward Net comprises three
+components: Input Block, Feature Extraction Block, and the Reward Block. This network uses
+supervisedlearningtoacquireknowledgefromexpertsbymimickingtheself-rewardingfunction.It
+achievesthisthroughtheuseofsophisticatedtime-seriesfeatureextractionmodelssuchasTimesNet,
+WFTNet,andNLinear.
+Moreover,themechanismcanselectdifferentrewardfunctionsdesignatedbyexperts—
+suchasMin-Max,SharpeRatio,andReturn—aslabelstoguidethetrainingofthereward
+networkviasupervisedlearning. Bycomparingthepredictedrewardswiththeexpert-
+defined labels, the model selects the most favorable rewards. This process allows the
+self-rewardingnetworktoadapteffectivelytodiversemarketconditions.
+Short-term Sharpe ratio reward: The Sharpe ratio, proposed by Sharpe et al. [57],
+evaluatesstrategyperformancebyassessingbothreturnandrisk. Thispaperemploysa
+
+--- PAGE 8 BREAK ---
+
+Mathematics2024,12,4020 9of25
+short-termSharperatioasarewardfunctiontomeasuretheimmediateinfluenceofactions
+overafuturetimespandenotedbykdays,asdefinedinEquations(1)–(3):
+rSSR =POS ×R ∗ , (1)
+t t t
+mean(Rk)
+R ∗ = t , (2)
+t std(Rk)
+t
+Rk = (cid:20) p t+1 −p t , p t+2 −p t ,..., p t+k −p t (cid:21) , (3)
+t p p p
+t t t
+where POS denotes the position held at time t, Rk denotes the return for k days in the
+t t
+future,computedasthepercentagedifferenceinprice(p )fromtimettot+k.
+t
+Returnreward: Thereturn-basedrewardfunctionquantifiesthefinancialgainfrom
+each action [53]. It is formulated to capture the direct financial impact of a decision,
+providingimmediatefeedbackonthefinancialoutcomesoftheagent’stradingdecisions.
+ItismathematicallyexpressedinEquation(4):
+rReturn =POS × P t −P t−1 ×100, (4)
+t t P t−1
+wherePOS denotesthepositionheldattimet,andP representstheasset’sclosingprice
+t t
+attimet.
+Min-Maxreward: TheMin-Maxrewardfunction,tailoredtoreflectmarketdynamics
+overvariousdurations,maximizesprofitbyconsideringthegreatestbenefitsfromdifferent
+stockpositions[52]. Thisrewardfunction’stemporaladaptabilityallowsittocapturemar-
+ketdynamicsacrossdifferentdurations,maximizingprofit. Thefunction’scustomization
+potential enables its fine-tuning to align with specific market tendencies. It is formally
+definedinEquations(5)–(7):
+
+POS ∗maxR, ifmaxR>0or
+
+maxR
+t
++minR>0,
+rMin-Max = POS ∗minR, ifminR<0or (5)
+t t
+
+maxR+minR<0,
+const-(maxR-minR), otherwise.
+wherePOS denotesthepositionheldattimet,and
+t
+(cid:40)
+maxR=
+max(r t+1 ,r t+2 ,...,r t+m ), ifr t+i >0,
+(6)
+0, otherwise,
+(cid:40)
+minR=
+min(r t+1 ,r t+2 ,...,r t+m ), ifr t+i <0,
+(7)
+0, otherwise,
+withr t+i = pt+ p i − t pt ×100.
+Accordingly,theimmediaterewardr
+∈R1×1iscomputedasfollows:
+t
+(cid:40)
+rs[a ], ifrs[a ] ≥re[a ];
+r = t t t t t t (8)
+t re[a ], otherwise,
+t t
+wherers ∈R3×1istheoutputfromtheRewardNet,andre ∈R3×1istheexpert-definedreward.
+t t
+3.3. Self-RewardingDoubleDeepQ-Network
+Theself-rewardingmechanismextendsacrossvariousRLalgorithms,includingvalue-
+basedmethodslikeDQN,policy-basedmethodslikeProximalPolicyOptimization(PPO),
+
+--- PAGE 9 BREAK ---
+
+Mathematics2024,12,4020 10of25
+and actor-critic methods like Advantage Actor-Critic (A2C). This paper focuses on the
+developmentofaSelf-RewardingDoubleDQN(SRDDQN)specificallydesignedforfi-
+nancialtradingstrategies,aimingtooptimizerewardallocationusingexpertlabelsand
+learnedpredictions.
+The Double DQN framework addresses the overestimation bias inherent in DQN
+models, where Q-values may be inaccurately inflated, leading to suboptimal decisions.
+DoubleDQNseparatestheactionselectionprocessfromvalueestimationbymaintaining
+twodistinctneuralnetworks: themainnetwork(θ)andthetargetnetwork(θ−). Themain
+networkpredictsQ-valuesforselectingactions,whilethetargetnetworkisusedforvalue
+updates,reducingbiasandstabilizinglearning.
+For each action, a transition tuple (s t ,a t ,r t ,s t+1 ) is created, where s t is the current
+state,a t istheactiontaken,r t istherewardobtained,ands t+1 isthenextstate. Thereward
+r isdeterminedbycomparingthepredictedrewardfromtheself-rewardingnetwork(rs)
+t t
+withtheexpert-definedreward(re),selectingthehigherofthetwo:
+t
+r =max(rs[a ],re[a ]). (9)
+t t t t t
+Theself-rewardingnetwork(moredetailscanbeseeninFigure2)estimatesreward
+values for each action. These predicted rewards are compared against expert-labeled
+rewards(expertknowledge),whicharebasedonfinancialmetricslikeMin-Max,Sharpe
+Ratio,andReturn.
+TheQ-valueupdateiscomputedusingthefollowingequation:
+Q(s t ,a t ;θ) ← Q(s t ,a t ;θ)+α (cid:2) r t +γQ(s t+1 ,a max (s t+1 ;θ −))−Q(s t ,a t ;θ) (cid:3) , (10)
+where α is the learning rate, and γ is the discount factor. The term a max (s t+1 ;θ) =
+argmax at+1 Q(s t+1 ,a t+1 ;θ) representstheactionthatmaximizesthe Q-valueinthenext
+states t+1 .
+Thetwonetworks(mainandtarget)areupdatedasynchronouslytoensurestability,
+wherethetargetnetwork(θ−)isupdatedtomatchthemainnetwork(θ)everyN− steps.
+3.4. SRDDQNTraining
+ThetrainingprocessofSRDDQNissystematicallyoutlinedinAlgorithm1. Theal-
+gorithmisbasedonDoubleDQNtotrainanoptimaltradingstrategy. Ateachtimestep,
+theagentselectsanactiona basedonthecurrentstates usinganϵ-greedypolicy. Afterex-
+t t
+ecutingtheaction,theagentobservesthenextstates t+1 andcalculatesthecorresponding
+reward. Therewardnetworkandtheexpertrewardgenerationfunctioncalculatereward
+valuesforallpossibleactions. Thetwosetsofrewards,rs (predictedbytheself-rewarding
+t
+network)andre (expert-labeledrewards),arecompared. Thehigherrewardisselectedas
+t
+thefinalrewardr fortraining. Thisrewardisusedbothtoupdatetheagent’sQ-values
+t
+and to train the self-rewarding network. When the number of transitions stored in the
+replaybufferexceedsthebatchsize,abatchoftransitionsofsizeN israndomlysampled
+b
+fromthebufferfortrainingboththeagentandtherewardnetwork. Theagent’sQ-network
+isupdatedusingtheTDtarget,whiletherewardnetworkisupdatedusingtheselected
+rewardrl. Notably,theagent’sparameters(θ)andtherewardnetwork’sparameters(ϕ)are
+t
+updatedsynchronouslyduringtraining.
+
+--- PAGE 10 BREAK ---
+
+Mathematics2024,12,4020 11of25
+Algorithm1SRDDQNalgorithm.
+1: Input: B—empty replay buffer; θ—initial policy network parameters, θ−—target
+networkparametersfromcopyingθ;N —replaybuffermaximumsize;N —training
+r b
+batchsize; N−—targetnetworkreplacementfrequency, ϕ—self-rewardingfunction
+networkR parameter,α—learningrateforpolicynetwork,β—learningrateforself-
+p
+rewardingnetworkR ,R —Expertrewardgenerationfunction;
+p e
+2:
+Initializethepolicynetworkandtargetnetworkwithrandominitialweightsθandθ−.
+3: Initializeself-rewardingfunctionnetworkparameterwithrandominitialweightsϕ.
+4: forepisodee = {1,2,··· ,M}do
+5: fort=1,Tdo
+6: Initializesequences 1 = {x 1 }andpreprocessedstateω 1 = ω(s 1 ).
+7: Selecta t withϵ-greedymethod;otherwise,selecta t =argmax a Q(ω(s t ),a t ;θ).
+8: Executeactiona t intheenvironmentandobservenextstates t+1 ,ω t+1 = ω(s t+1 ).
+9: Computepredictedrewardforallactionsr t s =R p (s t ;ϕ)byself-rewardingnetwork.
+10: Compute expert reward for all actions r t e = R e (s t ) by expert reward genera-
+tionfunction.
+11: Set:
+(cid:26) rs, ifrs[a ] ≥re[a ];
+rl = t t t t t
+t re, otherwise.
+t
+12: Rewardreceivedbyagentattimet: r t =r t l[a t ].
+13: Storethetransition(s t ,a t ,r t ,s t+1 ,r t l)inB.
+14: IfthereissufficientdatainB,sampleaminibatchofN b tuples(s i ,a i ,r i ,s i+1 ,r i l) ∼
+Unif(B).
+15: Set:
+(cid:26)
+y = r i , ifs i+1 isterminal;
+i r i +γQ(s i+1 ,argmax a Q(s i+1 ,a;θ);θ−), otherwise.
+16: Perform gradient descent on the loss function of the policy network: L θ =
+E[|y −Q(s,a;θ)|2].
+i i i
+17: Updatetheparametersofthepolicynetworkθwithθ ← θ−α∗ ∂Lθ.
+∂θ
+18: Replacetargetnetworkparametersθ− ← θeveryN− steps.
+19: Performgradientdescentonthelossfunctionoftheself-rewardingnetwork:
+L =E[|rl−R (s;ϕ)|2].
+ϕ i p i
+20: Updatetheparametersoftheself-rewardingnetworkϕwithϕ ← ϕ−β∗
+∂Lϕ.
+∂ϕ
+21: Sets t ← s t+1 .
+22: endfor
+23: endfor
+4. Experiments
+4.1. Dataset
+Todemonstratetherobustnessoftheproposedmodel,sixmajorstockindicesfrom
+different regions are used for evaluation purposes, including the Hang Seng (HSI) in
+HongKong,CAC40(FCHI)inFrance,KOSPI(KS11)inKorea,aswellastheNASDAQ
+Composite(IXIC),S&P500(SP500),andDowJonesIndustrialAverage(DJI)intheUnited
+States. Byincorporatingmultipleindicesfromdiversegeographicalregions,weensure
+that the model is exposed to a wide range of market conditions, thereby enhancing its
+ability to generalize and thereby reducing the risk of overfitting to any single market
+environment. Additionally,thedatarangecoversanextendedperiod,from1January2007
+to31December2023, allowingforcomprehensivetrainingandtestingoftheproposed
+model. The dataset prior to 31 December 2020 is the training set, and the data from
+1January2021to31December2023isthetestset,asshowninFigure3. Thistemporalsplit
+ensuresthatthemodelisevaluatedonout-of-sampledata,providingarealisticassessment
+
+--- PAGE 11 BREAK ---
+
+Mathematics2024,12,4020 12of25
+of its performancein unseen market conditions. Each index inthe dataset has five key
+features: openingprice,lowestprice,highestprice,closingprice,andtradingvolume.
+32,000
+24,000
+16,000
+8000
+2007-01-01 2009-06-05 2011-11-09 2014-04-14 2016-09-17 2019-02-21 2021-07-27 2023-12-31
+Date
+ecirP
+esolC
+Training Set 5000 Testing Set
+4000
+3000
+2000
+1000
+2007-01-01 2009-06-05 2011-11-09 2014-04-14 2016-09-17 2019-02-21 2021-07-27 2023-12-31
+Date
+(a)DJI
+ecirP
+esolC
+Training Set Testing Set
+(b)SP500
+16,000
+12,000
+8000
+4000
+2007-01-01 2009-06-05 2011-11-09 2014-04-14 2016-09-17 2019-02-21 2021-07-27 2023-12-31
+Date
+ecirP
+esolC
+Training Set Testing Set
+30,000
+25,000
+20,000
+15,000
+10,000
+2007-01-01 2009-06-05 2011-11-09 2014-04-14 2016-09-17 2019-02-21 2021-07-27 2023-12-31
+Date
+(c)IXIC
+ecirP
+esolC
+Training Set Testing Set
+(d)HSI
+7500
+6000
+4500
+3000
+2007-01-01 2009-06-05 2011-11-09 2014-04-14 2016-09-17 2019-02-21 2021-07-27 2023-12-31
+Date
+ecirP
+esolC
+Training Set Testing Set
+3000
+2400
+1800
+1200
+2007-01-01 2009-06-05 2011-11-09 2014-04-14 2016-09-17 2019-02-21 2021-07-27 2023-12-31
+Date
+(e)FCHI
+ecirP
+esolC
+Training Set Testing Set
+(f)KS11
+Figure3.Closepricecurveofsixstockindices.
+4.2. EvaluationMetrics
+Toobjectivelyandcomprehensivelyassesstheproposedmethod,thispaperutilizes
+fourkeyinvestmentperformancemetrics. ThefirstandforemostmetricistheCumulative
+Return(CR),whichreflectstheoverallreturnoninvestmentsoveragiventimehorizon.
+Secondly,theAnnualizedReturn(AR)isemployedtoshowtheaveragelevelofreturnon
+investmentsoveragiventimehorizon,presentedasanannualpercentage. Furthermore,
+theSharpeRatio(SR)isutilizedtoassesstherisk-adjustedreturnoftheinvestment,which
+measurestheexcessreturnperunitofvolatilityortotalriskrelativetotherisk-freerate.
+Finally,MaximumDrawdown(MDD)isalsoconsidered,ametricthatrevealsthepotential
+downside risk to which an investment or portfolio may be exposed, as reflected by a
+measure of the maximum decline in invested capital from a high to a low in a given
+
+--- PAGE 12 BREAK ---
+
+Mathematics2024,12,4020 13of25
+periodoftime. Thesemetricscombinemultipledimensionsofreturn,risk,andvolatility,
+andtogetherprovideacomprehensiveassessmentofinvestmentperformance.
+4.3. BaselineMethods
+This section provides a comparative analysis of the SRDDQN algorithm against
+establishedDeepReinforcementLearning(DRL)modelsandtraditionaltradingstrategies.
+TheDRLmodelsconsideredincludeTDQN,DQN-Vanilla,andFire(DQN-HER),while
+thetraditionaltradingstrategiesareBuyandHold(B&H),SellandHold(S&H),Mean
+ReversionwithMovingAverages(MR),andTrendFollowingwithMovingAverages(TF).
+Specifically,theB&Hstrategyinvolvesaninvestorpurchasinganassetandholdingit
+throughouttheinvestmentperiod,disregardingpricefluctuations. Conversely,theS&H
+strategyentailsaninvestorshort-sellinganassetatthebeginningoftheperiodandmain-
+tainingthispositionuntiltheend. MRstrategiesoperateontheassumptionthatpriceswill
+returntotheirhistoricalaverages;thisstudyemploysa10-daySimpleMovingAverage
+(SMA) to detect such reversion opportunities. TF strategies, often used in algorithmic
+trading, utilize moving averages to identify trading signals. For this analysis, 10-day
+and 20-day SMAs are implemented to discern potential trading activities. The TDQN,
+proposedbyThéateandErnst[58],focusesonoptimizingtradingpositionsthroughafive-
+layerfullyconnectedDeepQ-Network. DQN-Vanilla,developedbyTaghianetal.[59],
+usesasimplertwo-layerfullyconnectednetworktoformulatetradingdecisionsbased
+onstockOHLCdata. Additionally,Fire(DQN-HER),presentedbyCornalbaetal.[29],
+exploresmulti-objectivedeepreinforcementlearningforeffectivetradinginbothstockand
+cryptocurrencymarkets,incorporatingdynamicrewardfunctionsanddiscountfactorsto
+enhancelearningoutcomes.
+4.4. ExperimentalSetup
+Theproposedmethodistrainedindividuallyonsixdifferentstockindicesdatasets,
+andafterthetrainingphase,theperformanceofthemodelisevaluatedusingatestset
+associatedwitheachdataset. Thisevaluationmethodmeasurestheaccuracyofthemodel
+inpredictingvariousactionsofdifferentstockmarketsbytrainingonmultipledatasets.
+Table 1 lists the hyperparameters involved in the three time series feature extraction
+networksinthisexperiment.Table2detailsthehyperparametersforthethreereinforcement
+learningmethods. Theinitialcapitalis$500,000,andthetransactioncostis0.3%ofthetotal
+amountofeachtransaction. Thehardwareandsoftwareusedareasfollows: theprocessor
+is13thGenIntel(R)Core(TM)i7-13700KF,GPUisNVIDIARTX4090with24GBmemory.
+Thesoftwareversionsusedareasfollows: Pythonv3.10,Pytorchv1.12,andCUDAv12.1.
+ThesystemisrunningonWindows10.
+Moreover,Figures4and5showthetrainingresultsoftheself-rewardnetworkand
+SRDDQNagentontheDJIandHSIdatasets. Figure4showsthelosscurvesoftheself-
+rewardingnetworktrainedwithTimesNetandMin-Maxrewardlabels. Thelosssteadily
+decreasesastrainingprogresses,indicatingthatthenetworkislearningeffectively. Bythe
+endof100episodes,thelossvaluesonbothDJIandHSIdatasetsconvergetonear-zero
+values,suggestingthattheself-rewardingnetworkhassuccessfullyminimizedprediction
+errors and learned the reward patterns from the market data. Figure 5 illustrates the
+accumulatedrewardoftheSRDDQNagentsduringthe100trainingepisodes. Theaccumu-
+latedrewardrepresentsthetotalrewardobtainedbytheagentoveracompletetrajectory.
+Asshowninthefigure,therewardincreasesrapidlyintheearlyepisodes,demonstrating
+theagent’sabilitytoimproveitsperformanceastrainingprogresses. Afterapproximately
+20episodesforbothdatasets,theaccumulatedrewardreachesastableplateau,withno
+significantdropsorsuddenspikesinthesubsequentepisodes. Thisstabilitysuggeststhat
+theSRDDQNagenthassuccessfullyconvergedtoanoptimalstrategy.
+
+--- PAGE 13 BREAK ---
+
+Mathematics2024,12,4020 14of25
+Table1.Thehyperparametersofvariousrewardfunctionnetworks.
+Hyperparameter NLinear WFTNet TimesNet
+Networklayer 2MLP 13CNN+2MLP 13CNN+2MLP
+Activationfunction - GELU GELU
+Batchsize 32 32 32
+Learningrate(α) 0.0001 0.0001 0.0001
+Optimizer Adam Adam Adam
+Windowsize 20 20 20
+The-ofthistwotablesmeansthealgorithmorthenetworkdoesnothavethisparameter.
+Table2.Thehyperparametersofvariousdeepreinforcementlearningmethods.
+Hyperparameter A2C PPO SRDDQN
+Agentnetwork TimesNet TimesNet TimesNet
+Discountfactorγ 0.9 0.9 0.9
+Learningrate(α) 0.0001 0.0001 0.0001
+Episode 100 100 100
+Replaymemory 1000 1000 1000
+Batchsize 32 32 32
+Greedy - - 0.9
+Clip - 0.1 -
+The-ofthistwotablesmeansthealgorithmorthenetworkdoesnothavethisparameter.
+(a)DJI (b)HSI
+Figure4.Thelossofself-rewardingnetworksbasedonTimesNetandMin-Maxrewardlabels.
+6500 8400
+6000 7800
+7200
+5500
+6600
+5000
+6000
+4500
+5400
+0 20 40 60 80 100 0 20 40 60 80 100
+(a)DJI (b)HSI
+Figure5.AccumulatedrewardoftheSRDDQNagentsonDJIandHSI.
+
+--- PAGE 14 BREAK ---
+
+Mathematics2024,12,4020 15of25
+4.5. ExperimentalResults
+4.5.1. ComparisonwithBaselines
+To assess the effectiveness of the proposed method, we conducted a comparative
+evaluation of the SRDDQN model against various baseline models across six different
+datasets. The experimental results demonstrate that the SRDDQN model significantly
+outperforms the other models on four major financial metrics: CR, AR, SR, and MDD,
+asshowninTable3.
+Table3.Performancecomparisonofvariousmethodsonsixdatasets.
+Datasets Metrics B&H S&H MR TF TDQN DQN-Vanilla Fire(DQN-HER) SRDDQN
+CR↑ 4.12% −4.12% 1.53% −3.08% −43.04% 58.42% 76.79% 305.43%
+AR↑ 10.55% −10.38% 4.84% −7.92% −22.51% 21.06% 19.11% 57.83%
+DJI
+SR↑ 0.54 −0.40 0.27 −0.44 −1.26 1.28 1.51 3.94
+MDD↓ 20.23% 25.37% 17.95% 23.78% 45.57% 10.96% 6.92% 5.03%
+CR↑ 1.93% −1.93% −5.15% −4.18% −17.35% 14.25% 51.87% 1124.23%
+AR↑ 8.04% −2.11% −12.58% −9.55% −4.91% 9.85% 14.50% 92.62%
+IXIC
+SR↑ 0.25 −0.07 −0.37 −0.31 −0.25 0.31 0.89 4.43
+MDD↓ 34.50% 27.41% 35.85% 30.28% 28.38% 38.34% 10.74% 5.55%
+CR↑ 0.54% −0.54% 1.46% −1.57% −37.85% 26.22% 90.21% 455.74%
+AR↑ 4.89% 1.90% 7.91% −4.06% −25.03% 18.37% 21.24% 68.40%
+SP500
+SR↑ 0.17 0.05 0.30 −0.15 −1.09 0.76 1.37 4.11
+MDD↓ 25.05% 26.70% 16.06% 24.28% 47.15% 20.80% 11.69% 3.89%
+CR↑ −7.07% 7.07% −3.47% −2.01% 37.11% 86.61% 46.92% 1302.76%
+AR↑ −22.11% 16.28% −6.32% −2.51% 11.05% 29.25% 13.46% 100.05%
+HSI
+SR↑ −0.65 0.84 −0.18 −0.08 0.67 1.19 0.70 4.51
+MDD↓ 45.38% 17.05% 43.65% 32.69% 33.49% 17.62% 18.72% 5.41%
+CR↑ 7.83% −7.83% 0.34% 3.91% 40.86% 127.84% 34.03% 371.92%
+AR↑ 18.28% −23.17% 2.94% 10.89% 11.57% 32.00% 10.48% 65.37%
+FCHI
+SR↑ 0.77 −0.51 0.12 0.48 0.75 1.95 0.69 3.99
+MDD↓ 21.95% 39.57% 23.41% 16.08% 21.11% 7.01% 12.50% 1.98%
+CR↑ −2.69% 2.69% -0.36% 4.70% −5.00% −9.04% 18.71% 444.20%
+AR↑ −5.86% 7.70% 0.86% 12.20% −0.46% −2.69% 6.33% 69.60%
+KS11
+SR↑ −0.24 0.40 0.04 0.57 −0.03 −0.11 0.35 4.46
+MDD↓↓ 34.23% 13.29% 29.59% 15.47% 24.98% 33.65% 21.60% 4.68%
+↑: Ahighervalueofthismetricispreferred. ↓: Alowervalueofthismetricispreferred. Bold: Thebest
+experimentalresult.
+SRDDQN not only surpassed traditional models like B&H and S&H but also out-
+performed more sophisticated models such as MR, TF, and other deep reinforcement
+learningapproacheslikeTDQN,DQN-Vanilla,andFire(DQN-HER).Remarkably,SRD-
+DQN achieved a CR of 305.43% on DJI, vastly surpassing Fire’s 76.79%, the next best
+model. Thistrendofdominanceisconsistentacrossalldatasets,withIXIC,SP500,andHSI
+showingexponentialimprovementsinbothCRandAR.SRDDQNdisplayedextraordinary
+resilienceandprofitability,withitslowestARbeing57.83%onDJIanditshighestreaching
+anastounding100.05%onHSI.Thisisinsharpcontrasttothebaselinemodels,wherenone
+exceededa40%AR.SuchawidemarginunderscoresSRDDQN’srobustnessindiverse
+marketconditions.
+Additionally,SRDDQN’sSharpeRatio(SR)issignificantlyhigheracrossalldatasets,
+indicatingahigherreturnperunitofrisk. OntheDJIdataset,themodel’sSRpeaksat3.94,
+whichisnotablyhigherthanthehighestbaselineFire’s1.51. Intermsofriskmanagement,
+asmeasuredbyMaximumDrawdown(MDD),SRDDQNexhibitsanexceptionalabilityto
+minimizelosses,withMDDontheDJIdatasetatonly5.03%,whileTDQN’sMDDisas
+highas45.57%. ThelowerMDDsuggeststhatSRDDQNnotonlyenhancesreturnsbutalso
+reducespotentiallosses,emphasizingitsefficacyinmitigatingriskduringmarketdeclines.
+
+--- PAGE 15 BREAK ---
+
+Mathematics2024,12,4020 16of25
+Figure6depictsthecumulativereturncurvesofSRDDQNacrosssixstockindices.
+Theverticalaxisrepresentscumulativereturns,whilethehorizontalaxisrepresentsthe
+days over which the strategy was run. Among the indices, HSI shows the highest cu-
+mulative return, reaching above 1302.76% by the end of the period. IXIC also exhibits
+strongperformance,thoughnotashighasHSI.ThesefindingsfurthervalidateSRDDQN’s
+superiority in managing the complexities of stock market dynamics and offer valuable
+insightsfordevelopingtradingstrategies.
+1200
+1000
+800
+600
+400
+200
+0
+0 100 200 300 400 500 600 700
+Days
+)%(nruteR
+evitalumuC
+DJI IXIC
+FCHI S&P 500
+HSI KS11
+Figure6.CumulativereturncurvesofSRDDQNacrosssixstockindices.
+4.5.2. AnalysisoftheSelf-RewardingLearningParadigm
+ThissectionanalyzestheimpactofemployingDDQNwithsharedbuffersandsyn-
+chronoustrainingstrategiesonmodelperformanceusingtheDJIdataset. Variousconfigu-
+rationsofbuffersharingandsynchronizedtrainingstepsweretested,andaresummarized
+inTable4. Theresultsindicateaclearadvantagewhenusingasharedbufferwithsynchro-
+nizedtrainingsteps. Specifically,theconfigurationwhereboththebufferissharedand
+thetrainingstepsaresynchronized(N=1,M=1)outperformedallotherconfigurations,
+achievingaCRof305.43%,ARof57.83%,andSRof3.94. Thisshowsthatsynchronous
+learningwithasharedexperiencebuffersignificantlyenhancestradingperformance.
+Table4.PerformancecomparisonofvarioustrainingmethodswithDDQNontheDJIdataset.
+Buffer Training CR↑ AR↑ SR↑ MDD↓
+Independent synchronized 297.62% 57.19% 3.85 6.92%
+N=1,M=1 305.43% 57.83% 3.94 5.03%
+N=100,M=5 284.1% 56.01% 3.77 3.97%
+N=100,M=10 267.11% 54.42% 3.76 4.92%
+N=100,M=15 237.55% 51.57% 3.40 6.62%
+Shared N=100,M=20 262.78% 54.09% 3.56 4.92%
+N=50,M=15 278.55% 55.52% 3.72 5.43%
+N=150,M=15 265.98% 54.34% 3.68 3.86%
+N=200,M=15 258.45% 53.63% 3.61 4.21%
+↑: Ahighervalueofthismetricispreferred. ↓: Alowervalueofthismetricispreferred. Bold: Thebest
+experimentalresult.
+Incontrast,increasingtheintervalsbetweenlearningrewardfunctions(e.g.,N=100,
+M=15orN=200,M=15)generallyledtoreducedperformancemetricsacrossallindicators.
+
+--- PAGE 16 BREAK ---
+
+Mathematics2024,12,4020 17of25
+For example, increasing M values in configurations with N = 100 resulted in performance
+degradation,showcasingdiminishingreturnswithlessfrequentrewardupdates.
+Moreover,theexperimentaldatademonstratethatwhileincreasingthenumberof
+initialsynchronizedsteps(e.g., N=100)withoutfrequentrewardupdates(e.g., higher
+Mvalues)leadstomoderateperformancedecline,excessivelyhighvalues(e.g.,N=200,
+M=15)correlatewithfurtherreductionsinCRandAR,alongsideslightimprovementsin
+MDD.Thispatternhighlightsthetrade-offbetweenlearningefficiencyandriskmanage-
+mentinalgorithmictradingenvironments.
+4.5.3. AnalysisofSelf-RewardingwithDifferentNetworks
+Theproposedmethodintegratestheself-rewardinglearningmechanismintothedouble
+DQNapproach. Thissectionevaluatestheeffectivenessoftheself-rewardingmechanism
+incombinationwiththreedifferentnetworks—TimesNet,WFNet,andNLinear—known
+fortheirrobustperformanceinfinancialtimeseriesforecasting. Theresults,detailedin
+Table 5, highlight the comparative performance of each network when employing the
+self-rewardingmechanismversusapre-trainedrewardmechanismontheDJIdataset.
+Table5.Performanceofself-rewardingnetworksandpre-trainedrewardnetworkswithDDQNon
+theDJIdataset.
+Network Reward CR↑ AR↑ SR↑ MDD↓
+self-rewarding 298.58% 57.26% 3.87 6.92%
+NLinear
+pre-trained 275.82% 55.27% 3.72 3.83%
+self-rewarding 264.58% 54.21% 3.67 3.65%
+WFTNet
+pre-trained 240.22% 51.84% 3.43 5.99%
+self-rewarding 305.43% 57.83% 3.94 5.03%
+TimesNet
+pre-trained 209.35% 48.45% 3.25 4.21%
+↑: Ahighervalueofthismetricispreferred. ↓: Alowervalueofthismetricispreferred. Bold: Thebest
+experimentalresult.
+The results show that the self-rewarding mechanism consistently outperforms the
+pre-trainedrewardmodelacrossallmetrics. Specifically,TimesNetachievedthehighest
+CumulativeReturn(CR)of305.43%andthehighestAnnualizedReturn(AR)of57.83%
+undertheself-rewardingmechanism. Thisperformanceisnotablecomparedtoitspre-
+trained counterpart, which yielded a CR of 209.35% and an AR of 48.45%. TimesNet
+also exhibited a significant improvement in SR, reaching 3.94 under the self-rewarding
+paradigm, compared to 3.25 with the pre-trained reward. This indicates superior risk-
+adjustedreturns.
+WFNetalsodemonstratedsubstantialgainsundertheself-rewardingconfiguration,
+achieving an impressive CR of 264.58% and SR of 3.67, along with the lowest MDD of
+3.65%,emphasizingitsresilienceduringadversemarketconditions.
+4.5.4. AnalysisofSelf-RewardingwithDifferentRewardLabels
+Theeffectivenessoftheself-rewardingmechanismintheSRDDQNmethodisevalu-
+atedacrossthreedifferentrewardlabels: formula-basedreward,andself-rewardingusing
+theIXICdataset. InTable6,theresultsshowthattheself-rewardingmechanismsignif-
+icantlyoutperformstheformula-basedapproach. Specifically,undertheself-rewarding
+mechanism,theCRincreasedfrom816.32%to1124.23%inthebestcase(Min-Max),reflect-
+ingagainofapproximately300percentagepoints. Similarly, ARexhibitedmarkedim-
+provements.
+Furthermore,theSR,ameasureofrisk-adjustedreturn,furthersupportsthesuperior-
+ityoftheself-rewardingmethod. Theself-rewardingmechanismachievedaSharperatioof
+4.43,comparedto3.93undertheformula-basedmethodintheMin-Maxlabel,indicating
+moreefficientperformancerelativetotheriskundertaken.
+
+--- PAGE 17 BREAK ---
+
+Mathematics2024,12,4020 18of25
+Table6.Performancecomparisonofself-rewardingfordifferentrewardlabelswithDDQNonthe
+IXICdataset.
+RewardType Metrics SharpeRatio Return Min-Max
+CR↑ 921.68% 421.83% 816.32%
+AR↑ 87.58% 67.23% 84.36%
+Formula
+SR↑ 4.03 2.96 3.93
+MDD↓ 5.70% 14.02% 5.42%
+CR↑ 1035.83% 646.25% 1124.23%
+AR↑ 90.56% 78.34% 92.62%
+Self-rewarding
+SR↑ 4.25 3.53 4.43
+MDD↓ 5.70% 6.60% 5.55%
+↑: Ahighervalueofthismetricispreferred. ↓: Alowervalueofthismetricispreferred. Bold: Thebest
+experimentalresult.
+4.5.5. AnalysisofSelf-RewardinginDifferentRLMethods
+Thissectionprovidesinsightsintotheeffectivenessoftheself-rewardingmechanism
+under various RL frameworks, particularly for the A2C, PPO, and DDQN algorithms.
+Acomprehensivecomparisonoftheperformanceofthesemethodsundertwodifferent
+reward types—a formula-based reward mechanism and a self-rewardingmechanism—
+is presented in Table 7, with both being tested on the DJI dataset. The self-rewarding
+mechanism significantly improves the cumulative reward (CR) for all tested methods.
+Notably,DDQN’sCRincreasedfrom295.16%to305.43%,A2C’sCRimprovedfrom177.23%
+to242.90%,andPPO’sCRrosefrom251.13%to256.47%.
+Table7.Comparisonofself-rewardingforA2C,PPO,andDDQNontheDJIDataset.
+RewardType Metrics A2C PPO DDQN
+CR↑ 177.23% 251.13% 295.16%
+AR↑ 44.55% 52.95% 57.00%
+Formula-Based
+SRR↑ 2.84 3.49 3.80
+MDD↓ 4.89% 3.93% 6.32%
+CR↑ 242.90% 256.47% 305.43%
+AR↑ 52.19% 53.44% 57.83%
+Self-Rewarding
+SR↑ 3.30 3.60 3.94
+MDD↓ 5.22% 4.19% 5.03%
+↑: Ahighervalueofthismetricispreferred. ↓: Alowervalueofthismetricispreferred. Bold: Thebest
+experimentalresult.
+Similarly,theannualreturn(AR)ispositivelyaffectedbytheself-rewardingstrategy.
+DDQN’sARincreasedfrom57.00%to57.83%. TheincreaseintheSR(SharpeRatio)sug-
+gestsamorefavorablerisk-adjustedreturnprofilewhenemployingtheself-rewarding
+feature. DDQN’s SR rose from 3.80 to 3.94, indicating the highest risk-adjusted perfor-
+manceamongallthemethods. Whilethemaximumdrawdown(MDD)forA2CandPPO
+increasedslightlywhenusingtheself-rewardingmechanism,DDQN’sMDDdecreased,
+suggestingthattheself-rewardingmechanismhasthepotentialtoreducesignificantlosses
+andimprovetheriskmanagementofthesemethods.
+4.5.6. AnalysisofTradingStrategy
+AfteranalyzingtheeffectivenessofSRDDQNacrossdifferentexperiments,further
+observationsweremadeontheagent’sactionsinalldatasets.Figures7–11showtheactions
+performedbytheSRDDQNagentinsixdatasets. Theredboxhighlightsthezoomed-in
+sectionofthefigure. Theseactionsarelabeledonthestockpricetrendchartstoillustrate
+howtheagentmadetradingdecisionsbasedonpricemovements.
+
+--- PAGE 18 BREAK ---
+
+Mathematics2024,12,4020 19of25
+36,000
+34,000
+32,000
+30,000
+0 100 200 300 400 500 600 700
+Days
+ecirP
+esolC
+Long
+Short
+37,500
+36,000
+34,500
+33,000
+690 705 720
+Figure7.ActionsofSRDDQNAgentinDJI.
+7500
+7000
+6500
+6000
+5500
+0 100 200 300 400 500 600 700
+Days
+ecirP
+esolC
+Long
+Short
+7350
+7200
+7050
+6900
+228 232 236 240
+Figure8.ActionsofSRDDQNAgentinFCHI.
+First,thetradingactionsundertakenbytheSRDDQNagentwithintheDJIandFCHI
+datasetsareillustratedinFigures7and8. Uponcloserexamination,itbecomesevident
+thattheSRDDQNagentexhibitsastutetradingdecisions. Forinstance,inFigure7,around
+the690thday,theagentidentifiedanupwardtrendinstockpriceandexecuteda“long”
+trade. Bythe700thday,asthestockpriceapproachedapeak,theagentswiftlyswitchedto
+a“short”position.AsimilarpatternisobservedinFigure8,wheretheagentmadea“short”
+decisionatthepeakaroundthe228thday,anticipatingasubsequentdownwardtrend.
+ThispatternofdecisiveactionsisalsoevidentinFigure10,wheretheagentadeptly
+navigatedsignificantmarketfluctuations,consistentlymakingprofitabletrades.
+Second,thetradingbehavioroftheSRDDQNagentintheHSIandKS11datasetsis
+visualizedinFigures9and11. InFigure9,aroundthe24thday,theagentstrategicallyexe-
+cuteda“long”tradeanticipatinganupwardmovement.Shortlythereafter,ittransitionedto
+a“short”position,followedbyanother“short”tradeduetoacontinueddownwardtrend.
+Thisdemonstratestheagent’shigh-frequencytradingapproachduringperiodsoffrequent
+oscillations,aimingtooptimizereturns. AsimilarpatternisseeninFigure11,wherethe
+agentdemonstratedprecisetimingforeachtradeduringhigh-frequencyoscillationsin
+stockprices.
+
+--- PAGE 19 BREAK ---
+
+Mathematics2024,12,4020 20of25
+28,000
+24,000
+20,000
+16,000
+0 100 200 300 400 500 600 700
+Days
+ecirP
+esolC
+Long
+Short
+29,200
+28,800
+28,400
+28,000
+24 30 36 42
+Figure9.ActionsofSRDDQNAgentinHSI.
+4800
+4500
+4200
+3900
+3600
+0 100 200 300 400 500 600 700
+Days
+ecirP
+esolC
+Long
+Short
+3840
+3760
+3680
+3600
+420 425 430 435 440
+Figure10.ActionsofSRDDQNagentinSP500.
+3300
+3000
+2700
+2400
+2100
+0 100 200 300 400 500 600 700
+Days
+ecirP
+esolC
+Long
+Short
+2680
+2640
+2600
+2560
+2520
+315 320 325 330 335
+Figure11.ActionsofSRDDQNagentinKS11.
+
+--- PAGE 20 BREAK ---
+
+Mathematics2024,12,4020 21of25
+4.5.7. Discussion
+ThiscomprehensiveanalysisofSRDDQNdemonstratesitsconsistentoutperformance
+ofbaselinestrategiesacrossvariousdatasetsandscenarios,asmeasuredbyCR,AR,SR,
+andMDD.ThesuperiorperformanceofSRDDQN,asdetailedinTable3,canbeattributed
+toitsnovelself-rewardingmechanism,whichdynamicallyadjuststherewardstructure
+based on real-time market feedback. This approach not only capitalizes on prevailing
+markettrendsbutalsoeffectivelymitigatespotentiallosses,asevidencedbysignificantly
+lowerMDDvalues.
+Section4.5.2providesananalysisofDDQNconfigurationsusingsharedbuffersand
+synchronoustrainingstrategies,highlightingthebenefitsofsynchronizedstepsintraining
+regimes. Theconfigurationstestedvaryintheextentofbuffersharingandsynchronization
+oftrainingsteps,demonstratingclearadvantagesofemployingasharedbuffersystemin
+enhancingconsistencyandreliabilityinvolatilefinancialmarkets.
+FurtheranalysisinSection4.5.3revealsthattheintegrationofself-rewardingmech-
+anismsnotonlyboostskeyfinancialmetricsbutalsosignificantlyreducesriskexposure.
+Thiscomparativestudyvividlyillustratestheadvantagesofemployingself-rewarding
+systemsinoptimizingthetrainingofneuralnetworksforcomplexfinancialtimeseries
+applications,suggestingthatthesetechniquescouldbepivotalinadvancingthefieldof
+algorithmictrading.
+TheexperimentsdiscussedinSection4.5.4,usingtheIXICdataset,consistentlyshow
+improvementsacrossallfinancialmetrics,reinforcingtheeffectivenessoftheself-rewarding
+mechanism. Thisdynamicadaptabilitytochangingmarketconditionsmarksasignificant
+improvementovertraditionalformula-basedrewardfunctions,underscoringthepotential
+ofself-rewardingRLinalgorithmictrading.
+Whiletheresultsarepromising,relianceonhistoricaldataandsimulationspresents
+limitations in predicting future market behavior. Future research should explore the
+applicationofSRDDQNinlivetradingenvironmentstovalidateitseffectivenessunder
+real-world conditions. Additionally, the integration of macroeconomic indicators into
+therewardsystemcouldfurtherenhancethemodelbyaccountingforbroadereconomic
+impactsonmarketdynamics.
+Thisworkopensseveralavenuesforfutureexploration,includingthepotentialfor
+real-time adaptation of the self-rewarding mechanism to sudden market shifts and the
+explorationofhybridmodelsthatcombinetraditionalfinancialanalysiswithRLtechniques.
+Thecontinuedrefinementandtestingofthesesystemswillbecrucialinadvancingthe
+practicalapplicationsofmachinelearninginfinancialmarkets.
+5. Conclusions
+ThispaperintroducestheinnovativeSelf-RewardingDeepReinforcementLearning
+(SRDRL)mechanism,whichsignificantlyenhancesreinforcementlearningapplications
+through the integration of a self-rewarding function. By addressing akey limitation in
+reward function design, the self-rewarding mechanism offers a scalable and adaptable
+framework, proving highly beneficial in complex and dynamic trading environments.
+Focusedonthefinancialdomain,thispaperemploysanovelSelf-RewardingDoubleDQN
+(SRDDQN)tooptimizerewardstructuresinalgorithmictradingstrategiesbasedonexpert-
+definedmetricssuchasMin-Max,SharpeRatio,andReturns. Advancedtimeseriesfeature
+extractionnetworks,includingTimesNet,WFTNet,andNLinear,areutilizedtorefinethe
+self-rewardingfunction,enablingthedynamicadjustmentofrewardstrategiesinresponse
+tomarketconditions. Theefficacyofthismethodisvalidatedthroughextensivetesting
+acrossvariousdatasets,includingDJI,IXIC,SP500,HSI,FCHI,andKS11.
+Thekeycontributionsofthispaperincludethefollowing:
+1. Introducingaself-rewardingmechanismwithinaDDQNframework;theproposed
+SRDRLsystemsynchronizesself-rewardinglearningwiththereinforcementlearning
+process,allowingforreal-timeadjustmentstotherewardstructurebasedondirect
+marketfeedback. Thissynchronizediterativelearningarchitecturenotonlyadapts
+
+--- PAGE 21 BREAK ---
+
+Mathematics2024,12,4020 22of25
+swiftly to market trends but also mitigates potential losses, significantly aligning
+learningoutcomeswithoptimaltradingstrategies.
+2. ByemployingexpertlabelssuchasMin-Max,SharpeRatio,andReturnstorefinethe
+self-rewardingfunctions,andleveragingadvancedtimeseriesextractionnetworks,
+theproposedmethodexhibitssuperiorscalability. ThisapplicationofDDQNfurther
+optimizestherewardmechanism,enrichingthemodel’scapacitytoreacttofinancial
+marketfluctuations.
+3. Demonstrating the effectiveness of the self-rewarding function under various RL
+frameworks,particularlyfortwodifferentrewardtypes(formula-basedrewardmech-
+anismandself-rewardingmechanism),testedwiththeA2C,PPO,andDDQNalgo-
+rithmsontheDJIdataset. Theself-rewardingmechanismsignificantlyimprovesall
+metricsforalltestedmethods.
+4. TheintegrationofDDQNwithsharedexperiencebuffersandsynchronoustraining
+protocolsmarkedlyimprovestradingperformance. Ourexperimentsdemonstrate
+thatthisapproachsubstantiallybooststhealgorithm’sefficiencyandeffectiveness
+overtraditionalmethods. Remarkably,SRDDQNachievedacumulativereturn(CR)
+of 436.01% on the DJI dataset, vastly surpassing DQN-Vanilla’s 58.42%, the next-
+best model. This trend of dominance is consistent across all datasets, with IXIC,
+SP500,andHSIshowcasingexponentialimprovementsinbothCRandannualized
+return(AR).
+Despiteitsstrengths,theframeworkencounterscertainlimitationsthatneedaddress-
+ing. Futureresearchwillfocusonrefiningtheintegrationofself-rewardingmechanisms
+inmorecomplextradingenvironments,enhancingtheadaptabilityofthemodelunder
+diverse market conditions, and further exploring the potential of multi-agent learning
+systemswithintheSRDRLframework. Additionally,largepre-trainedlanguagemodels
+(e.g.,GPT,FinBERT,etc.) arecapableofaccuratelyinterpretingmarkettrendsduetotheir
+strongcapabilitiesinsentimentanalysis,marketprediction,andnaturallanguageprocess-
+ing[60–62]. Therefore,wewillincludeLLMmodelsinourfutureworktocarryoutthe
+researchofsentimentanalysisinfinancialmarkets.
+Author Contributions: Conceptualization, methodology, data curation, writing—original draft
+preparation. Y.H.; software, validation, visualization, investigation, C.Z. and L.Z.; supervision,
+writing—review&editing, projectadministration, X.L.Allauthorshavereadandagreedtothe
+publishedversionofthemanuscript.
+Funding:ThisworkissupportedbytheFacultyResearchGrant,MacauUniversityofScienceand
+Technology(ProjectNo.FRG-22-001-INT),ExperimentalTeachingDemonstrationCenterforIntelli-
+gentFinancialTalents,BeijingInstituteofTechnology,Zhuhai(2023006ZLGC),andtheResearchBase
+forIntelligentFinancialGovernanceandNationalEconomicSecurity,BeijingInstituteofTechnology,
+Zhuhai(2023WZJD009).
+InstitutionalReviewBoardStatement:Notapplicable.
+InformedConsentStatement:Notapplicable.
+DataAvailabilityStatement:Ourstockdataisavailablefordownloadathttp://finance.yahoo.com
+(accessedon10November2024).
+ConflictsofInterest:Theauthorsdeclarenoconflictsofinterest.
+Abbreviations
+RL ReinforcementLearning
+DRL DeepReinforcementLearning
+DQN DeepQ-Network
+DDQN DoubleDeepQ-Network
+DLMA DirectLargeModelAlignment
+SSRL Self-SupervisedReinforcementLearning
+SRDRL Self-RewardingDeepReinforcementLearning
+
+--- PAGE 22 BREAK ---
+
+Mathematics2024,12,4020 23of25
+SRDDQN Self-RewardingDoubleDeepQ-Network
+PPO ProximalPolicyOptimization
+A2C AdvantageActor-Critic
+A3C AsynchronousAdvantageActor-critic
+CR CumulativeReturn
+AR AnnualizedReturn
+SR SharpeRatio
+MDD MaximumDrawdown
+PnL Profit&Loss
+DPO DirectPreferenceOptimization
+LSTM Long-ShortTermMemory
+ETDQN ExtendedTradingDeepQ-Network
+B&H BuyandHold
+S&H SellandHold
+MR MeanReversionwithMovingAverages
+TF TrendFollowingwithMovingAverages
+References
+1. Chakole,J.;Kurhekar,M. TrendfollowingdeepQ-Learningstrategyforstocktrading. ExpertSyst.2020,37,e12514.[CrossRef]
+2. Corazza,M.;Sangalli,A. Q-LearningandSARSA:AComparisonbetweenTwoIntelligentStochasticControlApproachesfor
+FinancialTrading.UniversityCa’FoscariofVenice,Dept.ofEconomicsResearchPaperSeriesNo.No.15/WP/2015.Available
+online:https://ssrn.com/abstract=2617630(accessedon11November2024).
+3. Cornalba,F.;Disselkamp,C.;Scassola,D.;Helf,C. Multi-Objectiverewardgeneralization: ImprovingperformanceofDeep
+ReinforcementLearningforselectedapplicationsinstockandcryptocurrencytrading. arXiv2022,arXiv:2203.04579.
+4. Huang,C.Y. Financialtradingasagame:Adeepreinforcementlearningapproach. arXiv2018,arXiv:1807.02787.
+5. Jeong,G.H.;Kim,H.Y. ImprovingfinancialtradingdecisionsusingdeepQ-learning:Predictingthenumberofshares,action
+strategies,andtransferlearning. ExpertSyst.Appl.2019,117,125–138.[CrossRef]
+6. Jiang,W.;Liu,M.;Xu,M.;Chen,S.;Shi,K.;Liu,P.;Zhang,C.;Zhao,F. Newreinforcementlearningbasedonrepresentation
+transferforportfoliomanagement. Knowl.-BasedSyst.2024,293,111697.[CrossRef]
+7. Ma,C.;Zhang,J.;Liu,J.;Ji,L.;Gao,F. AParallelMulti-moduleDeepReinforcementLearningAlgorithmforStockTrading.
+Neurocomputing2021,449,290–302.[CrossRef]
+8. Oyewola,D.O.;Akinwunmi,S.A.;Omotehinwa,T.O. DeepLSTMandLSTM-AttentionQ-learningbasedreinforcementlearning
+inoilandgassectorprediction. Knowl.-BasedSyst.2024,284,111290.[CrossRef]
+9. Si,W.;Li,J.;Ding,P.;Rao,R. Amulti-objectivedeepreinforcementlearningapproachforstockindexfuture’sintradaytrading.In
+Proceedingsofthe201710thInternationalSymposiumonComputationalIntelligenceandDesign(ISCID),Hangzhou,China,
+9–10December2017;Volume2,pp.431–436.
+10. Tran,M.;Pham-Hi,D.;Bui,M. OptimizingAutomatedTradingSystemswithDeepReinforcementLearning. Algorithms2023,
+16,23.[CrossRef]
+11. Grzes,M.;Kudenko,D. Plan-basedrewardshapingforreinforcementlearning. InProceedingsofthe20084thInternationalIEEE
+ConferenceIntelligentSystems,Varna,Bulgaria,6–8September2008;IEEE:Piscataway,NJ,USA,2008;Volume2,pp.10–22.
+12. Proper,S.;Tumer,K. Modelingdifferencerewardsformultiagentlearning. InProceedingsoftheAAMAS,Valencia,Spain,4–8
+June2012;pp.1397–1398.
+13. Li, Y.; Zheng, W.; Zheng, Z. Deep robust reinforcement learning for practical algorithmic trading. IEEE Access 2019,
+7,108014–108022.[CrossRef]
+14. Huang,B.;Jin,Y. Sociallearninginself-organizingsystemsforcomplexassemblytasks. Adv. Eng. Inform. 2023,57,102109.
+[CrossRef]
+15. Zhang,W.;Lin,Y.;Liu,Y.;You,H.;Wu,P.;Lin,F.;Zhou,X. Self-SupervisedReinforcementLearningwithdual-rewardfor
+knowledge-awarerecommendation. Appl.SoftComput.2022,131,109745.[CrossRef]
+16. Casper,S.;Davies,X.;Shi,C.;Gilbert,T.K.;Scheurer,J.;Rando,J.;Freedman,R.;Korbak,T.;Lindner,D.;Freire,P.;etal. Open
+problemsandfundamentallimitationsofreinforcementlearningfromhumanfeedback. arXiv2023,arXiv:2307.15217.
+17. Kaufmann, T.; Weng, P.; Bengs, V.; Hüllermeier, E. Asurveyofreinforcementlearningfromhumanfeedback. arXiv2023,
+arXiv:2312.14925.
+18. Yuan,W.;Pang,R.Y.;Cho,K.;Sukhbaatar,S.;Xu,J.;Weston,J. Self-rewardinglanguagemodels. arXiv2024,arXiv:2401.10020.
+19. Liu, A.; Bai, H.; Lu, Z.; Kong, X.; Wang, S.; Shan, J.; Cao, M.; Wen, L. Direct Large Language Model Alignment Through
+Self-RewardingContrastivePromptDistillation. arXiv2024,arXiv:2402.11907.
+20. Chen,L.;Gao,Q.ApplicationofDeepReinforcementLearningonAutomatedStockTrading.InProceedingsofthe2019IEEE10th
+InternationalConferenceonSoftwareEngineeringandServiceScience(ICSESS),Beijing,China,18–20October2019;pp.29–33.
+21. Corazza,M.;Fasano,G.;Gusso,R.;Pesenti,R. AcomparisonamongReinforcementLearningalgorithmsinfinancialtrading
+systems. Univ.Ca’FoscariVeniceDept.Econ.Res.Pap.Ser.No2019,33.[CrossRef]
+
+--- PAGE 23 BREAK ---
+
+Mathematics2024,12,4020 24of25
+22. Dang,Q.V. Reinforcementlearninginstocktrading. InAdvancedComputationalMethodsforKnowledgeEngineering:Proceedingsof
+the6thInternationalConferenceonComputerScience,AppliedMathematicsandApplications,ICCSAMA2019,Hanoi,Vietnam,19–20
+December2019;SpringerInternationalPublishing:Cham,Switzerland,2020;pp.311–322.
+23. Gao,X. Deepreinforcementlearningfortimeseries:Playingidealizedtradinggames. arXiv2018,arXiv:1803.03916.
+24. Li,Y.;Liu,P.;Wang,Z. StockTradingStrategiesBasedonDeepReinforcementLearning. Sci. Program. 2022,2022,698656.
+[CrossRef]
+25. Liu, P.; Zhang, Y.; Bao, F.; Yao, X.; Zhang, C. Multi-typedatafusionframeworkbasedondeepreinforcementlearningfor
+algorithmictrading. Appl.Intell.2023,53,1683–1706.[CrossRef]
+26. Xiao, X. QuantitativeInvestmentDecisionModelBasedonPPOAlgorithm. HighlightsSci. Eng. Technol. 2023, 34,16–24.
+[CrossRef]
+27. Rodinos,G.;Nousi,P.;Passalis,N.;Tefas,A. ASharpeRatiobasedrewardschemeinDeepReinforcementLearningforfinancial
+trading. InArtificialIntelligenceApplicationsandInnovations.AIAI2023.IFIPAdvancesinInformationandCommunicationTechnology;
+Springer:Cham,Switzerland,2023;pp.15–23.
+28. Chakraborty,S. CapturingFinancialmarketstoapplyDeepReinforcementLearning. arXiv2019,arXiv:1907.04373.
+29. Cornalba,F.;Disselkamp,C.;Scassola,D.;Helf,C. Multi-objectiverewardgeneralization: ImprovingperformanceofDeep
+ReinforcementLearningforapplicationsinsingle-assettrading. NeuralComput.Appl.2024,36,619–637.[CrossRef]
+30. Nair,A.;Zhu,B.;Narayanan,G.;Solowjow,E.;Levine,S. Learningonthejob:Self-rewardingoffline-to-onlinefinetuningfor
+industrialinsertionofnovelconnectorsfromvision. InProceedingsofthe2023IEEEInternationalConferenceonRoboticsand
+Automation(ICRA),London,UK,29May–2June2023;pp.7154–7161.
+31. Koratamaddi,P.;Wadhwani,K.;Gupta,M.;Sanjeevi,S.G. Marketsentiment-awaredeepreinforcementlearningapproachfor
+stockportfolioallocation. Eng.Sci.Technol.Int.J.2021,24,848–859.[CrossRef]
+32. Yang,B.;Liang,T.;Xiong,J.;Zhong,C. DeepreinforcementlearningbasedontransformerandU-Netframeworkforstock
+trading. Knowl.-BasedSyst.2023,262,110211.[CrossRef]
+33. Wang,Y.;Yan,G. Surveyontheapplicationofdeeplearninginalgorithmictrading. DataSci. Financ. Econ. 2021,1,345–361.
+[CrossRef]
+34. Hendershott,T.;Jones,C.M.;Menkveld,A.J. Doesalgorithmictradingimproveliquidity? J.Financ.2011,66,1–33.[CrossRef]
+35. Nuti,G.;Mirghaemi,M.;Treleaven,P.;Yingsaeree,C. Algorithmictrading. Computer2011,44,61–69.[CrossRef]
+36. Treleaven,P.;Galas,M.;Lalchand,V. Algorithmictradingreview. Commun.ACM2013,56,76–85.[CrossRef]
+37. Amirzadeh,R.;Nazari,A.;Thiruvady,D. Applyingartificialintelligenceincryptocurrencymarkets:Asurvey. Algorithms2022,
+15,428.[CrossRef]
+38. Nikolova,V.;TrinidadSegovia,J.E.;Fernández-Martínez,M.;Sánchez-Granero,M.A. Anovelmethodologytocalculatethe
+probabilityofvolatilityclustersinfinancialseries:Anapplicationtocryptocurrencymarkets. Mathematics2020,8,1216.[CrossRef]
+39. Guzmán,A.;Pinto-Gutiérrez,C.;Trujillo,M.A. Tradingcryptocurrenciesasapandemicpastime: COVID-19lockdownsand
+bitcoinvolume. Mathematics2021,9,1771.[CrossRef]
+40. Huang,Y.;Lu,X.;Zhou,C.;Song,Y. DADE-DQN:DualActionandDualEnvironmentDeepQ-NetworkforEnhancingStock
+TradingStrategy. Mathematics2023,11,3626.[CrossRef]
+41. Rosati,R.;Romeo,L.;Goday,C.A.;Menga,T.;Frontoni,E. Machinelearningincapitalmarkets:Decisionsupportsystemfor
+outcomeanalysis. IEEEAccess2020,8,109080–109091.[CrossRef]
+42. Teng,T.;Ma,L. Deeplearning-basedriskmanagementoffinancialmarketinsmartgrid. Comput.Electr.Eng.2022,99,107844.
+[CrossRef]
+43. Huang,Y.;Song,Y. AnewhybridmethodofrecurrentreinforcementlearningandBiLSTMforalgorithmictrading. J.Intell.
+FuzzySyst.2023,45,1939–1951.[CrossRef]
+44. Huang,Y.;Wan,X.;Zhang,L.;Lu,X. AnoveldeepreinforcementlearningframeworkwithBiLSTM-Attentionnetworksfor
+algorithmictrading. ExpertSyst.Appl.2024,240,122581.[CrossRef]
+45. Kong,M.;So,J. Empiricalanalysisofautomatedstocktradingusingdeepreinforcementlearning. Appl. Sci. 2023,13,633.
+[CrossRef]
+46. Kochliaridis, V.; Kouloumpris, E.; Vlahavas, I. Combining deep reinforcement learning with technical analysis and trend
+monitoringoncryptocurrencymarkets. NeuralComput.Appl.2023,35,21445–21462.[CrossRef]
+47. Zou,J.;Lou,J.;Wang,B.;Liu,S. Anoveldeepreinforcementlearningbasedautomatedstocktradingsystemusingcascadedlstm
+networks. ExpertSyst.Appl.2024,242,122801.[CrossRef]
+48. Avramelou,L.;Nousi,P.;Passalis,N.;Tefas,A. Deepreinforcementlearningforfinancialtradingusingmulti-modalfeatures.
+ExpertSyst.Appl.2024,238,121849.[CrossRef]
+49. Kwon,Y.;Lee,Z. Ahybriddecisionsupportsystemforadaptivetradingstrategies:Combiningarule-basedexpertsystemwitha
+deepreinforcementlearningstrategy. Decis.SupportSyst.2024,177,114100.[CrossRef]
+50. Park, J.H.; Kim, J.H.; Huh, J.H. DeepReinforcementLearningRobotsforAlgorithmicTrading: ConsideringStockMarket
+ConditionsandUSInterestRates. IEEEAccess2024,12,20705–20725.[CrossRef]
+51. deAzevedoTakara,L.;Santos,A.A.P.;Mariani,V.C.;dosSantosCoelho,L.Deepreinforcementlearningappliedtoasparse-reward
+tradingenvironmentwithintradaydata. ExpertSyst.Appl.2024,238,121897.[CrossRef]
+
+--- PAGE 24 BREAK ---
+
+Mathematics2024,12,4020 25of25
+52. Huang,Y.;Zhou,C.;Cui,K.;Lu,X. ImprovingAlgorithmicTradingConsistencyviaHumanAlignmentandImitationLearning.
+ExpertSyst.Appl.2024,253,124350.[CrossRef]
+53. Carta,S. Amulti-layerandmulti-ensemblestocktraderusingdeeplearninganddeepreinforcementlearning. Appl.Intell.Int.J.
+Artif.Intell.NeuralNetw.ComplexProbl.-SolvingTechnol.2021,51,889–905.[CrossRef]
+54. Wu,H.;Hu,T.;Liu,Y.;Zhou,H.;Wang,J.;Long,M.TimesNet:Temporal2D-VariationModelingforGeneralTimeSeriesAnalysis.
+arXiv2023,arXiv:2210.02186.
+55. Zeng,A.;Chen,M.;Zhang,L.;Xu,Q. Aretransformerseffectivefortimeseriesforecasting? Proc.AAAIConf.Artif.Intell.2023,
+37,11121–11128.[CrossRef]
+56. Liu,P.;Wu,B.;Li,N.;Dai,T.;Lei,F.;Bao,J.;Jiang,Y.;Xia,S. WFTNet:ExploitingGlobalandLocalPeriodicityinLong-termTime
+SeriesForecasting. arXiv2023,arXiv:2309.11319.
+57. Sharpe.;William,F. TheSharpeRatio. J.Portf.Manag.1994,21,49–58.[CrossRef]
+58. Théate,T.;Ernst,D. Anapplicationofdeepreinforcementlearningtoalgorithmictrading. ExpertSyst.Appl.2021,173,114632.
+[CrossRef]
+59. Taghian,M.;Asadi,A.;Safabakhsh,R. Learningfinancialasset-specifictradingrulesviadeepreinforcementlearning. ExpertSyst.
+Appl.2022,195,116523.[CrossRef]
+60. Liu,Z.;Huang,D.;Huang,K.;Li,Z.;Zhao,J. Finbert:Apre-trainedfinanciallanguagerepresentationmodelforfinancialtext
+mining.InProceedingsoftheTwenty-NinthInternationalConferenceonInternationalJointConferencesonArtificialIntelligence,
+Yokohama,Japan,7–15January2021;pp.4513–4519.
+61. Li,Y.;Wang,S.;Ding,H.;Chen,H. Largelanguagemodelsinfinance:Asurvey. InProceedingsoftheFourthACMInternational
+ConferenceonAIinFinance,Brooklyn,NY,USA,27–29November2023;pp.374–382.
+62. Dong,M.M.;Stratopoulos,T.C.;Wang,V.X. AscopingreviewofChatGPTresearchinaccountingandfinance. Int.J.Account.Inf.
+Syst.2024,55,100715.[CrossRef]
+Disclaimer/Publisher’sNote: Thestatements, opinionsanddatacontainedinallpublicationsaresolelythoseoftheindividual
+author(s)andcontributor(s)andnotofMDPIand/ortheeditor(s).MDPIand/ortheeditor(s)disclaimresponsibilityforanyinjuryto
+peopleorpropertyresultingfromanyideas,methods,instructionsorproductsreferredtointhecontent.
+
+--- PAGE 25 BREAK ---
+

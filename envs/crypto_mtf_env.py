@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import pandas as pd
-from envs.crypto_portfolio_env import CryptoPortfolioEnv
+from baselines.envs.crypto_portfolio_env import CryptoPortfolioEnv
 
 class CryptoMtfEnv(CryptoPortfolioEnv):
     """
