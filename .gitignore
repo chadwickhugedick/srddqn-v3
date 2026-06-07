@@ -12,7 +12,8 @@ outputs/
 
 # Model checkpoints
 checkpoints/
-
+models/
+logs/
 # Wandb logs
 wandb/
 
