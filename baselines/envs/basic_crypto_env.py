@@ -72,10 +72,19 @@ class BasicCryptoEnv(gym.Env):
         if self.current_step >= self.n_steps - 1:
             truncated = True
             
+        expert_rewards = np.zeros(3, dtype=np.float32)
+        if 'reward_0' in self.df.columns:
+            expert_rewards = np.array([
+                self.df.loc[self.current_step, 'reward_0'],
+                self.df.loc[self.current_step, 'reward_1'],
+                self.df.loc[self.current_step, 'reward_2']
+            ], dtype=np.float32)
+
         info = {
             "price": next_price,
             "position": self.current_position,
-            "reward": reward
+            "reward": reward,
+            "expert_rewards": expert_rewards
         }
         
         return self._get_obs(), float(reward), terminated, truncated, info

@@ -100,7 +100,7 @@ class CryptoPortfolioEnv(BasicCryptoEnv):
             holding_cost = self.equity * self.holding_cost_pct
 
         # ── PnL on existing position ────────────────────────────────────
-        pnl = self.equity * self.current_position * price_change_pct
+        pnl = self.equity * target_position * price_change_pct
 
         # ── Update equity ───────────────────────────────────────────────
         self.equity = self.equity + pnl - fee_cost - holding_cost

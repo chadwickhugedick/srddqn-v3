@@ -7,7 +7,6 @@ from stable_baselines3 import DQN
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from envs.crypto_mtf_env import CryptoMtfEnv
-from envs.srddqn_wrapper import SRDRLWrapper
 
 def main():
     data_path = "data/processed/BTCUSDT_1h_MTF_features.parquet"
